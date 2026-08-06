@@ -1,0 +1,40 @@
+/*
+ * PULSE — Endeavour Mining Group IT — Design tokens
+ * SINGLE SOURCE OF TRUTH for palette (per master plan §4).
+ * Consumed by the app UI, Chart.js configs AND the PptxGenJS deck engine
+ * (deck engine reads these values so app and decks can never drift).
+ */
+:root {
+  /* Brand */
+  --edv-navy: #1A3A5F;
+  --edv-orange: #E87722;
+
+  /* RAG — exact hexes, shared with decks */
+  --rag-green: #2E9E8F;
+  --rag-amber: #F2A900;
+  --rag-red: #C8102E;
+
+  /* Typography */
+  --font-stack: Calibri, "Segoe UI", sans-serif;
+
+  /* Neutrals derived from the navy for a coherent surface scale */
+  --ink: #17293d;
+  --ink-soft: #4a5d72;
+  --ink-faint: #8496a9;
+  --surface: #f4f6f9;
+  --surface-card: #ffffff;
+  --line: #dde4ec;
+
+  /* Semantic aliases */
+  --color-primary: var(--edv-navy);
+  --color-accent: var(--edv-orange);
+  --color-ok: var(--rag-green);
+  --color-warn: var(--rag-amber);
+  --color-danger: var(--rag-red);
+
+  /* Elevation & shape */
+  --radius: 8px;
+  --radius-sm: 5px;
+  --shadow-card: 0 1px 3px rgba(26, 58, 95, 0.10), 0 1px 2px rgba(26, 58, 95, 0.06);
+  --shadow-pop: 0 6px 24px rgba(26, 58, 95, 0.18);
+}

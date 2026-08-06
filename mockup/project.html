@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PULSE — Project Room (P1 mock)</title>
+<link rel="stylesheet" href="../public/css/tokens.css">
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidenav">
+    <div class="brand">
+      <div class="logo">PULSE<span>.</span></div>
+      <div class="org">ENDEAVOUR MINING — GROUP IT</div>
+    </div>
+    <nav>
+      <a class="active" href="index.html">▦ Portfolio</a>
+      <a href="meeting.html">▶ Meetings</a>
+      <a href="site.html">◎ Sites</a>
+      <a class="disabled" href="#" onclick="return false"><span>☑ My Actions</span><span class="phase-tag">P5</span></a>
+      <a class="disabled" href="#" onclick="return false"><span>📊 Reports</span><span class="phase-tag">P5</span></a>
+      <a class="disabled" href="#" onclick="return false"><span>⚙ Admin</span><span class="phase-tag">P2</span></a>
+    </nav>
+    <div class="mock-note">P1 DESIGN MOCK<br>Viewed as Awa Diallo —<br>Contributor, PM of this project<br>(full edit here, read-only elsewhere)</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="search">🔍 <input type="search" placeholder="Search projects & roadblocks…"></div>
+      <div class="spacer"></div>
+      <button class="bell" title="Notifications (mock)">🔔<span class="badge">3</span></button>
+      <button class="btn primary" onclick="toast('Project deck (7 slides) lands at P6')">⬇ Export Project Deck</button>
+    </div>
+
+    <div class="content">
+      <a href="index.html" style="font-size:.8rem;color:var(--ink-soft)">← Portfolio</a>
+
+      <div class="proj-header" style="margin-top:8px">
+        <div class="toprow">
+          <span id="rag-slot"></span>
+          <h1>SGO LAN Refresh</h1>
+          <span class="code" style="color:var(--ink-faint);font-weight:700;font-size:.8rem">PRJ-2026-001</span>
+          <span class="chip prio">P1</span>
+          <span style="margin-left:auto" class="chip stage">BUILD</span>
+        </div>
+
+        <div class="stepper">
+          <span class="step done"><span class="node">IDEA</span><span class="bar"></span></span>
+          <span class="step done"><span class="node">DESIGN</span><span class="bar"></span></span>
+          <span class="step now"><span class="node">BUILD</span><span class="bar"></span></span>
+          <span class="step"><span class="node">DEPLOY</span><span class="bar"></span></span>
+          <span class="step"><span class="node">RUN</span></span>
+        </div>
+
+        <div class="facts">
+          <span>Project Manager<b><span class="avatar alt" style="width:20px;height:20px;font-size:.6rem;vertical-align:middle">AD</span>
+            Awa Diallo <span style="font-weight:400;color:var(--ink-faint)">(Contributor · Site IT Lead SGO)</span></b></span>
+          <span>Sponsor<b>Group IT Manager</b></span>
+          <span>Divisions<b><span class="chip div lead">INF</span> <span class="chip div">OPS</span> <span class="chip div">SEC</span></b></span>
+          <span>Sites<b><span class="chip site">SGO</span></b></span>
+          <span>Start → Target<b>02 Mar 26 → 14 Sep 26</b></span>
+          <span>Progress (computed)<b>45% — 5 / 11 milestones done</b></span>
+        </div>
+      </div>
+
+      <div class="room-grid">
+        <div>
+          <div class="tabs">
+            <button class="active" data-tab="timeline">Timeline</button>
+            <button data-tab="roadblocks">Roadblocks <span class="pill CRITICAL" style="margin-left:4px">1</span></button>
+            <button data-tab="actions">Actions</button>
+            <button data-tab="updates">Updates &amp; Decisions</button>
+          </div>
+
+          <!-- TIMELINE -->
+          <div class="tabpanel active" id="tab-timeline">
+            <div class="panel">
+              <div class="tl-axis">
+                <span class="today" style="left:46%"></span>
+                <span class="tl-ms done" style="left:8%"><span class="knob"></span><span class="t">Survey<br>20 Mar</span></span>
+                <span class="tl-ms done" style="left:22%"><span class="knob"></span><span class="t">Design ok<br>30 Apr</span></span>
+                <span class="tl-ms done gate" style="left:34%"><span class="knob"></span><span class="t">SECURITY GATE<br>05 Jun</span></span>
+                <span class="tl-ms slipped" style="left:42%"><span class="knob"></span><span class="t">Switch staging<br>28 Jul ⚠</span></span>
+                <span class="tl-ms future" style="left:62%"><span class="knob"></span><span class="t">Site readiness<br>28 Aug</span></span>
+                <span class="tl-ms future gate" style="left:84%"><span class="knob"></span><span class="t">GO LIVE<br>14 Sep</span></span>
+              </div>
+              <table class="ms-list">
+                <tr><th>Milestone</th><th>Type</th><th>Owner(s)</th><th>Due</th><th>Status</th></tr>
+                <tr><td>Site survey &amp; audit</td><td><span class="pill type">STANDARD</span></td>
+                    <td><span class="avatar" style="width:22px;height:22px;font-size:.6rem">AD</span></td><td>20 Mar 26</td><td><span class="pill DONE">DONE</span></td></tr>
+                <tr><td>Firewall rules review</td><td><span class="pill type">SECURITY_GATE</span></td>
+                    <td><span class="avatar" style="width:22px;height:22px;font-size:.6rem">FN</span></td><td>05 Jun 26</td><td><span class="pill DONE">DONE</span></td></tr>
+                <tr><td>Core switch staging</td><td><span class="pill type">STANDARD</span></td>
+                    <td><span class="pair"><span class="avatar" style="width:22px;height:22px;font-size:.6rem" title="Infra owner">YB</span><span class="avatar alt" style="width:22px;height:22px;font-size:.6rem" title="Ops co-owner (Infra↔Ops pairing)">AD</span></span></td>
+                    <td style="color:var(--rag-red);font-weight:700">28 Jul 26</td><td><span class="pill SLIPPED">SLIPPED</span></td></tr>
+                <tr>
+                  <td>SGO cutover readiness
+                    <div class="readiness">
+                      <div style="font-size:.68rem;letter-spacing:.05em;color:var(--ink-faint);font-weight:700;margin-bottom:4px">SITE_READINESS CHECKLIST — 4/6</div>
+                      <label><input type="checkbox" checked> <span class="done-check">Power available</span></label>
+                      <label><input type="checkbox" checked> <span class="done-check">Rack space</span></label>
+                      <label><input type="checkbox" checked> <span class="done-check">LAN ready</span></label>
+                      <label><input type="checkbox" checked> <span class="done-check">Local hands identified</span></label>
+                      <label><input type="checkbox"> Access badge</label>
+                      <label><input type="checkbox"> Change window agreed</label>
+                    </div>
+                  </td>
+                  <td><span class="pill type">SITE_READINESS</span></td>
+                  <td><span class="avatar alt" style="width:22px;height:22px;font-size:.6rem">AD</span></td>
+                  <td>28 Aug 26</td><td><span class="pill IN_PROGRESS">IN PROGRESS</span></td></tr>
+                <tr><td>Production cutover</td><td><span class="pill type">GO_LIVE</span></td>
+                    <td><span class="pair"><span class="avatar" style="width:22px;height:22px;font-size:.6rem">YB</span><span class="avatar alt" style="width:22px;height:22px;font-size:.6rem">AD</span></span></td>
+                    <td>14 Sep 26</td><td><span class="pill NOT_STARTED">NOT STARTED</span></td></tr>
+              </table>
+            </div>
+          </div>
+
+          <!-- ROADBLOCKS -->
+          <div class="tabpanel" id="tab-roadblocks">
+            <div class="panel">
+              <table class="ms-list">
+                <tr><th>Roadblock</th><th>Severity</th><th>Owner</th><th>Due</th><th>Age</th><th>Status</th><th></th></tr>
+                <tr>
+                  <td><b>Core switch stuck in Abidjan customs</b><br>
+                      <span style="font-size:.76rem;color:var(--ink-soft)">Clearance docs rejected twice; blocks staging &amp; cutover chain.</span></td>
+                  <td><span class="pill CRITICAL">CRITICAL</span></td>
+                  <td>Logistics / Y. Bamba</td>
+                  <td style="color:var(--rag-red);font-weight:700">01 Aug 26</td>
+                  <td>19 d</td>
+                  <td><span class="pill OPEN">OPEN</span></td>
+                  <td><button class="btn small ghost-danger" onclick="toast('Escalated → notification sent to Admin + INF/OPS/SEC Division Leads')">Escalate ↑</button></td>
+                </tr>
+                <tr>
+                  <td><b>Fiber patch panel mislabeled in row B</b></td>
+                  <td><span class="pill MINOR">MINOR</span></td>
+                  <td>A. Diallo</td>
+                  <td>22 Aug 26</td>
+                  <td>4 d</td>
+                  <td><span class="pill IN_PROGRESS">IN PROGRESS</span></td>
+                  <td></td>
+                </tr>
+              </table>
+            </div>
+          </div>
+
+          <!-- ACTIONS -->
+          <div class="tabpanel" id="tab-actions">
+            <div class="panel">
+              <div class="quickadd">
+                <input type="text" id="qa-title" placeholder="Quick add: action title…  (Enter to save)">
+                <select id="qa-owner"><option>A. Diallo</option><option>Y. Bamba</option><option>F. Ndiaye</option></select>
+                <input type="date" id="qa-due" value="2026-08-20">
+              </div>
+              <ul class="simple-list" id="action-list">
+                <li><input type="checkbox" onchange="toast('Action marked DONE')"> Chase customs broker for revised clearance docs
+                    <span class="due over">due 04 Aug — overdue</span></li>
+                <li><input type="checkbox" onchange="toast('Action marked DONE')"> Book SGO change window with mine planning
+                    <span class="due">due 15 Aug</span></li>
+                <li><input type="checkbox" onchange="toast('Action marked DONE')"> Pre-stage config on loaner switch
+                    <span class="due">due 18 Aug</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- UPDATES & DECISIONS -->
+          <div class="tabpanel" id="tab-updates">
+            <div class="panel" style="margin-bottom:14px">
+              <div class="quickadd">
+                <select><option>ON_TRACK</option><option selected>AT_RISK</option><option>WATCH</option></select>
+                <input type="text" placeholder="Post update: ≤400 chars, 20 seconds, done." maxlength="400"
+                       onkeydown="if(event.key==='Enter'){toast('Status update posted');this.value=''}">
+              </div>
+              <div class="feed">
+                <div class="feed-item">
+                  <span class="avatar alt">AD</span>
+                  <div class="fbody"><span class="mood AT_RISK">AT RISK</span>
+                    Switch still blocked in customs; staging replanned to loaner hardware. GO_LIVE date holds only if cleared by 20 Aug.
+                    <div class="fmeta">Awa Diallo · 04 Aug 26 · status update</div></div>
+                </div>
+                <div class="feed-item decision-item">
+                  <span class="avatar">GM</span>
+                  <div class="fbody"><b>DECISION —</b> Approve loaner-switch pre-staging to protect the September window.
+                    <div class="fmeta">Decided by Group IT Manager · INFRA_OPS_SYNC · 30 Jul 26</div></div>
+                </div>
+                <div class="feed-item">
+                  <span class="avatar alt">AD</span>
+                  <div class="fbody"><span class="mood WATCH">WATCH</span>
+                    Security gate passed. Customs lead time now the only critical path item.
+                    <div class="fmeta">Awa Diallo · 21 Jul 26 · status update</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT RAIL -->
+        <div class="rail">
+          <div class="exec">
+            <h3>Executive commentary</h3>
+            <textarea>SGO backbone is 20 years old and drops daily at shift change. This refresh removes the single point of failure before the wet season. One risk matters: the core switch is in customs — cleared by 20 Aug or go-live slips a month.</textarea>
+            <div class="hint">Feeds the deck verbatim (slide 7). What must the CFO/CIO understand this month?</div>
+          </div>
+          <div class="panel">
+            <h3>RAG breakdown</h3>
+            <div class="panel-body" style="font-size:.84rem;display:flex;flex-direction:column;gap:7px">
+              <div><span class="pill SLIPPED">R</span> Schedule — 1 of 11 milestones slipped/overdue (&gt;20% weighted rule → see tooltip)</div>
+              <div><span class="pill SLIPPED">R</span> Roadblocks — 1 CRITICAL open</div>
+              <div><span class="pill MAJOR" style="background:rgba(242,169,0,.2)">A</span> Actions — 1 overdue</div>
+              <div><span class="pill DONE">G</span> Freshness — updated 2 days ago</div>
+              <div style="border-top:1px solid var(--line);padding-top:7px"><b>Overall: RED</b> (worst of 4) — computed, no override set</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="mock-data.js"></script>
+<script>
+document.getElementById("rag-slot").innerHTML = ragDot(PROJECTS[0]);
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.remove("active"));
+  document.querySelectorAll(".tabpanel").forEach(x => x.classList.remove("active"));
+  b.classList.add("active");
+  document.getElementById("tab-" + b.dataset.tab).classList.add("active");
+});
+// quick-add action (Enter to save) — plan §4.2
+document.getElementById("qa-title").addEventListener("keydown", e => {
+  if (e.key !== "Enter" || !e.target.value.trim()) return;
+  const owner = document.getElementById("qa-owner").value;
+  const due = document.getElementById("qa-due").value;
+  document.getElementById("action-list").insertAdjacentHTML("afterbegin",
+    `<li><input type="checkbox"> ${e.target.value.replace(/</g,"&lt;")} <span class="due">due ${due} · ${owner}</span></li>`);
+  e.target.value = "";
+  toast("Action created — owner notified (ACTION_ASSIGNED)");
+});
+</script>
+</body>
+</html>

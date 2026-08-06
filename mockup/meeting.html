@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PULSE — Meeting Live (P1 mock)</title>
+<link rel="stylesheet" href="../public/css/tokens.css">
+<link rel="stylesheet" href="mock.css">
+</head>
+<body class="meeting">
+
+<header class="meet-header">
+  <span class="live-dot"></span>
+  <span class="mtitle">Infra ↔ Ops Weekly Sync</span>
+  <span class="mtag">LIVE · PRESENTER MODE</span>
+  <span class="mscope">Scope: <b>All sites</b> · 06 Aug 26 · 6 attendees · GMT</span>
+  <div class="mprog">
+    <span id="item-pos">Item 1 / 4</span>
+    <a class="btn small" style="background:#fff;color:var(--edv-navy)" href="index.html">Exit to Portfolio</a>
+  </div>
+</header>
+
+<main class="meet-stage">
+  <div id="agenda-slot"></div>
+
+  <div class="captured">
+    <h4>Captured this meeting — each entry is a REAL object linked to project + meeting</h4>
+    <ul id="captured-list">
+      <li><span class="ctype decision">DECISION</span> Approve loaner-switch pre-staging to protect the September window — PRJ-2026-001</li>
+    </ul>
+  </div>
+
+  <div class="captured" style="margin-top:14px;border-style:solid;opacity:.8">
+    <h4>Auto-agenda — built by the 6 rules (site-scopable at prepare step)</h4>
+    <ul>
+      <li><span class="ctype roadblock">RULE A</span> RED projects → SGO LAN Refresh · ITY Camp Wi-Fi</li>
+      <li><span class="ctype" style="background:var(--rag-amber);color:#5c4400">RULE B</span> AMBER projects → MGO ERP Rollout</li>
+      <li><span class="ctype note">RULE C</span> New roadblocks since last CLOSED sync → 1</li>
+      <li><span class="ctype note">RULE D</span> Overdue actions grouped by owner → 3 owners</li>
+      <li><span class="ctype decision">RULE E</span> GO_LIVE ≤ 30 days → HGO Backup WAN Link</li>
+      <li><span class="ctype note">RULE F</span> Silent projects (&gt;30 d) → ITY Camp Wi-Fi</li>
+    </ul>
+  </div>
+</main>
+
+<!-- capture forms -->
+<div class="capture-form" id="cap-form">
+  <h4 id="cap-title">+ Action</h4>
+  <div class="frow"><input type="text" id="cap-text" placeholder="Title…"></div>
+  <div class="frow">
+    <select id="cap-owner"><option>A. Diallo</option><option>Y. Bamba</option><option>I. Traoré</option><option>K. Mensah</option></select>
+    <input type="date" id="cap-due" value="2026-08-13">
+  </div>
+  <div class="frow">
+    <button class="btn navy" style="flex:1" id="cap-save">Save (creates real object)</button>
+    <button class="btn" id="cap-cancel">Cancel</button>
+  </div>
+</div>
+
+<footer class="capture-bar">
+  <span class="cap-label">CAPTURE →</span>
+  <button class="cap" data-kind="Action">+ Action</button>
+  <button class="cap" data-kind="Decision">+ Decision</button>
+  <button class="cap" data-kind="Roadblock">+ Roadblock</button>
+  <button class="cap" data-kind="Note">✎ Note</button>
+  <div class="nav-btns">
+    <button id="prev">‹ Prev</button>
+    <button id="next">Next ›</button>
+  </div>
+</footer>
+
+<script src="mock-data.js"></script>
+<script>
+const AGENDA = [
+  { code: "PRJ-2026-001", reason: ["red", "RED project"], note: "Customs blockage on core switch — decide: air-freight replacement vs hold date?" },
+  { code: "PRJ-2026-006", reason: ["silent", "SILENT >30 d"], note: "No activity since 02 Jul. PM to state: still viable this quarter?" },
+  { code: "PRJ-2026-007", reason: ["overdue", "AMBER + overdue actions"], note: "Cutover readiness 19 Aug — training room conflict to resolve today." },
+  { code: "PRJ-2026-003", reason: ["golive", "GO_LIVE ≤ 30 d"], note: "Failover test 18 Aug — confirm Ops on-site cover for the window." },
+];
+let idx = 0;
+
+function renderItem() {
+  const it = AGENDA[idx];
+  const p = PROJECTS.find(x => x.code === it.code);
+  document.getElementById("item-pos").textContent = `Item ${idx + 1} / ${AGENDA.length}`;
+  document.getElementById("agenda-slot").innerHTML = `
+  <div class="meet-card">
+    <div class="mc-head">
+      ${ragDot(p)}
+      <span class="title">${p.title}</span>
+      <span class="code">${p.code}</span>
+      <span class="agenda-reason ${it.reason[0]}">${it.reason[1]}</span>
+      <span style="margin-left:auto" class="chip stage">${p.stage.replace("_"," ")}</span>
+      ${p.sites.map(s => `<span class="chip site">${s}</span>`).join("")}
+    </div>
+    <div class="meet-grid">
+      <div>
+        <h4>State in 30 seconds</h4>
+        <div class="bigline">Progress <b>${p.progress}%</b> · target <b>${p.target}</b> · PM <b>${p.pm.name}</b></div>
+        <div class="bigline">${p.topRoadblock ? "⚑ " + p.topRoadblock : "✓ No open roadblocks"}</div>
+        <div class="bigline">◈ Next: ${p.nextMilestone} — <b>${p.nextMilestoneDate}</b></div>
+      </div>
+      <div>
+        <h4>Open actions on this project</h4>
+        <div class="bigline" style="font-size:.92rem">• Chase customs broker <span style="color:var(--rag-red);font-weight:700">(overdue)</span></div>
+        <div class="bigline" style="font-size:.92rem">• Book SGO change window — 15 Aug</div>
+        <div class="bigline" style="font-size:.92rem">• Pre-stage loaner config — 18 Aug</div>
+      </div>
+    </div>
+    <div class="meet-item-note"><b>Discussion point:</b> ${it.note}</div>
+  </div>`;
+}
+
+document.getElementById("next").onclick = () => { idx = Math.min(idx + 1, AGENDA.length - 1); renderItem(); };
+document.getElementById("prev").onclick = () => { idx = Math.max(idx - 1, 0); renderItem(); };
+
+// capture bar → ≤3-field form → appends a real-looking linked object
+let kind = "Action";
+document.querySelectorAll(".cap").forEach(b => b.onclick = () => {
+  kind = b.dataset.kind;
+  document.getElementById("cap-title").textContent = (kind === "Note" ? "✎ " : "+ ") + kind;
+  document.getElementById("cap-owner").style.display = kind === "Decision" || kind === "Note" ? "none" : "";
+  document.getElementById("cap-due").style.display = kind === "Note" ? "none" : "";
+  document.getElementById("cap-form").classList.add("open");
+  document.getElementById("cap-text").focus();
+});
+document.getElementById("cap-cancel").onclick = () => document.getElementById("cap-form").classList.remove("open");
+document.getElementById("cap-save").onclick = () => {
+  const t = document.getElementById("cap-text").value.trim();
+  if (!t) return;
+  const cls = kind.toLowerCase();
+  const extra = kind === "Action" || kind === "Roadblock"
+    ? ` — ${document.getElementById("cap-owner").value}, due ${document.getElementById("cap-due").value}` : "";
+  document.getElementById("captured-list").insertAdjacentHTML("beforeend",
+    `<li><span class="ctype ${cls}">${kind.toUpperCase()}</span> ${t.replace(/</g, "&lt;")}${extra} — ${AGENDA[idx].code}</li>`);
+  document.getElementById("cap-text").value = "";
+  document.getElementById("cap-form").classList.remove("open");
+  toast(`${kind} created & linked to ${AGENDA[idx].code} + this meeting`);
+};
+
+renderItem();
+</script>
+</body>
+</html>

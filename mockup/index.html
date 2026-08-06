@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PULSE — Portfolio Wall (P1 mock)</title>
+<link rel="stylesheet" href="../public/css/tokens.css">
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidenav">
+    <div class="brand">
+      <div class="logo">PULSE<span>.</span></div>
+      <div class="org">ENDEAVOUR MINING — GROUP IT</div>
+    </div>
+    <nav>
+      <a class="active" href="index.html">▦ Portfolio</a>
+      <a href="meeting.html">▶ Meetings</a>
+      <a href="site.html">◎ Sites</a>
+      <a class="disabled" href="#" onclick="return false"><span>☑ My Actions</span><span class="phase-tag">P5</span></a>
+      <a class="disabled" href="#" onclick="return false"><span>📊 Reports</span><span class="phase-tag">P5</span></a>
+      <a class="disabled" href="#" onclick="return false"><span>⚙ Admin</span><span class="phase-tag">P2</span></a>
+    </nav>
+    <div class="mock-note">P1 DESIGN MOCK<br>Fake data · viewed as Admin<br>All times GMT</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="search">🔍 <input id="q" type="search" placeholder="Search projects & roadblocks… (try “LAN”)"></div>
+      <div class="spacer"></div>
+      <button class="bell" title="Notifications (mock)">🔔<span class="badge">3</span></button>
+      <button class="btn primary" onclick="toast('Deck export lands at P6 — honors the filters you set here')">⬇ Export Deck</button>
+    </div>
+
+    <div class="content">
+      <div class="page-head">
+        <h1>Portfolio Wall</h1>
+        <span class="sub">Every active project, 30-second readable · KPI banner reflects active filters</span>
+      </div>
+
+      <div class="kpi-banner" id="kpis"></div>
+
+      <div class="filterbar">
+        <span class="flabel">Filter:</span>
+        <select id="f-div"><option value="">Division — all</option></select>
+        <select id="f-site"><option value="">Site — all</option></select>
+        <select id="f-stage"><option value="">Stage — all</option></select>
+        <select id="f-rag"><option value="">RAG — all</option><option>G</option><option>A</option><option>R</option></select>
+        <select id="f-prio"><option value="">Priority — all</option><option>P1</option><option>P2</option><option>P3</option></select>
+        <select id="f-pm"><option value="">PM — all</option></select>
+        <span class="flabel" style="margin-left:8px">Sort:</span>
+        <select id="f-sort">
+          <option value="rag">RAG severity</option>
+          <option value="target">Target date</option>
+        </select>
+        <button class="clear" id="f-clear">✕ Clear filters</button>
+      </div>
+
+      <div class="card-grid" id="cards"></div>
+    </div>
+  </div>
+</div>
+
+<script src="mock-data.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const RAG_ORDER = { R: 0, A: 1, G: 2 };
+
+// populate filter options from data
+Object.keys(DIVISIONS).forEach(d => $("#f-div").insertAdjacentHTML("beforeend", `<option value="${d}">${d} — ${DIVISIONS[d]}</option>`));
+SITES.forEach(s => $("#f-site").insertAdjacentHTML("beforeend", `<option>${s}</option>`));
+["IDEA","DESIGN","BUILD","DEPLOY","RUN","CLOSED","ON_HOLD"].forEach(s => $("#f-stage").insertAdjacentHTML("beforeend", `<option>${s}</option>`));
+[...new Set(PROJECTS.map(p => p.pm.name))].forEach(n => $("#f-pm").insertAdjacentHTML("beforeend", `<option>${n}</option>`));
+
+function filtered() {
+  const q = $("#q").value.trim().toLowerCase();
+  const d = $("#f-div").value, s = $("#f-site").value, st = $("#f-stage").value,
+        r = $("#f-rag").value, pr = $("#f-prio").value, pm = $("#f-pm").value;
+  let list = PROJECTS.filter(p =>
+    (!q || p.title.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || (p.topRoadblock || "").toLowerCase().includes(q)) &&
+    (!d || p.lead === d || p.engaged.includes(d)) &&
+    (!s || p.sites.includes(s)) &&
+    (!st || p.stage === st) &&
+    (!r || (p.override ? p.override.rag : p.rag) === r) &&
+    (!pr || p.priority === pr) &&
+    (!pm || p.pm.name === pm)
+  );
+  const sort = $("#f-sort").value;
+  list.sort(sort === "rag"
+    ? (a, b) => RAG_ORDER[a.override ? a.override.rag : a.rag] - RAG_ORDER[b.override ? b.override.rag : b.rag]
+    : (a, b) => (a.daysToTarget ?? 9e9) - (b.daysToTarget ?? 9e9));
+  return list;
+}
+
+function render() {
+  const list = filtered();
+  // KPI banner — recomputes on the FILTERED set (plan §4.1)
+  const eff = p => p.override ? p.override.rag : p.rag;
+  const g = list.filter(p => eff(p) === "G").length,
+        a = list.filter(p => eff(p) === "A").length,
+        r = list.filter(p => eff(p) === "R").length,
+        crit = list.filter(p => (p.topRoadblock || "").includes("CRITICAL")).length,
+        overdue = list.reduce((n, p) => n + (p.signals.actions === "A" ? 2 : p.signals.actions === "R" ? 4 : 0), 0),
+        silent = list.filter(p => p.silent).length;
+  $("#kpis").innerHTML = `
+    <div class="kpi"><div class="num">${list.length}</div><div class="lbl">Projects in view</div></div>
+    <div class="kpi rag"><div class="num"><i class="g">${g}</i><i class="a">${a}</i><i class="r">${r}</i></div><div class="lbl">Green / Amber / Red</div></div>
+    <div class="kpi ${crit ? "alert" : ""}"><div class="num">${crit}</div><div class="lbl">Open critical roadblocks</div></div>
+    <div class="kpi ${overdue ? "alert" : ""}"><div class="num">${overdue}</div><div class="lbl">Overdue actions</div></div>
+    <div class="kpi ${silent ? "alert" : ""}"><div class="num">${silent}</div><div class="lbl">Silent projects (&gt;30d)</div></div>
+    <div class="kpi"><div class="num">${list.filter(p => p.goLiveSoon).length}</div><div class="lbl">GO_LIVE ≤ 30 days</div></div>`;
+  $("#cards").innerHTML = list.length
+    ? list.map(projectCard).join("")
+    : `<div class="empty-state"><div class="big">◎</div><b>No projects match these filters.</b><br>
+       Widen the filters, or create the first project for this scope.</div>`;
+}
+
+document.querySelectorAll(".filterbar select, #q").forEach(el =>
+  el.addEventListener("input", render));
+$("#f-clear").onclick = () => {
+  document.querySelectorAll(".filterbar select").forEach(el => el.value = el.querySelector("option").value);
+  $("#f-sort").value = "rag"; $("#q").value = "";
+  render();
+};
+render();
+</script>
+</body>
+</html>

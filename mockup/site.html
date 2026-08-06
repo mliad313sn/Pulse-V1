@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PULSE — Site Lens (P1 mock)</title>
+<link rel="stylesheet" href="../public/css/tokens.css">
+<link rel="stylesheet" href="mock.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidenav">
+    <div class="brand">
+      <div class="logo">PULSE<span>.</span></div>
+      <div class="org">ENDEAVOUR MINING — GROUP IT</div>
+    </div>
+    <nav>
+      <a href="index.html">▦ Portfolio</a>
+      <a href="meeting.html">▶ Meetings</a>
+      <a class="active" href="site.html">◎ Sites</a>
+      <a class="disabled" href="#" onclick="return false"><span>☑ My Actions</span><span class="phase-tag">P5</span></a>
+      <a class="disabled" href="#" onclick="return false"><span>📊 Reports</span><span class="phase-tag">P5</span></a>
+      <a class="disabled" href="#" onclick="return false"><span>⚙ Admin</span><span class="phase-tag">P2</span></a>
+    </nav>
+    <div class="mock-note">P1 DESIGN MOCK<br>The site IT manager's daily page<br>Phone-first · All times GMT</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="search">🔍 <input type="search" placeholder="Search projects & roadblocks…"></div>
+      <div class="spacer"></div>
+      <button class="bell" title="Notifications (mock)">🔔<span class="badge">3</span></button>
+      <button class="btn primary" id="site-deck">⬇ Export site deck</button>
+    </div>
+
+    <div class="content">
+      <div class="page-head">
+        <h1>Site Lens</h1>
+        <span class="sub">Everything about one site — projects, milestones, readiness, roadblocks, actions</span>
+      </div>
+
+      <div class="site-picker" id="picker"></div>
+
+      <div class="golive-strip" id="golive"></div>
+
+      <div class="lens-grid">
+        <div class="col">
+          <div>
+            <h3 style="color:var(--edv-navy);font-size:.95rem;margin-bottom:10px" id="proj-h">Active projects</h3>
+            <div class="card-grid" id="site-cards" style="grid-template-columns:1fr"></div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="panel">
+            <h3>Site milestones next 60 days</h3>
+            <ul class="simple-list" id="site-ms"></ul>
+          </div>
+
+          <div class="panel">
+            <h3>Readiness checklists</h3>
+            <div class="panel-body" id="site-ready"></div>
+          </div>
+
+          <div class="panel">
+            <h3>Roadblocks touching this site</h3>
+            <ul class="simple-list" id="site-rb"></ul>
+          </div>
+
+          <div class="panel">
+            <h3>Actions owned by site staff</h3>
+            <ul class="simple-list" id="site-act"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="mock-data.js"></script>
+<script>
+const SITE_DETAIL = {
+  SGO: {
+    golive: [["14 Sep 26", "SGO LAN Refresh — production cutover"]],
+    ms: [["Core switch staging", "PRJ-2026-001", "28 Jul 26", true], ["SGO cutover readiness", "PRJ-2026-001", "28 Aug 26", false], ["ERP UAT wave — SGO users", "PRJ-2026-002", "18 Sep 26", false]],
+    ready: [["SGO cutover readiness — PRJ-2026-001", 4, 6]],
+    rb: [["Core switch stuck in Abidjan customs", "CRITICAL", "01 Aug 26", true], ["Fiber patch panel mislabeled in row B", "MINOR", "22 Aug 26", false]],
+    act: [["Chase customs broker for revised docs", "A. Diallo", "04 Aug 26", true], ["Book SGO change window", "A. Diallo", "15 Aug 26", false], ["Pre-stage config on loaner switch", "Y. Bamba", "18 Aug 26", false]],
+  },
+  HGO: {
+    golive: [["18 Aug 26", "HGO Backup WAN Link — failover test"]],
+    ms: [["GO_LIVE — failover test", "PRJ-2026-003", "18 Aug 26", false], ["Decommission legacy VSAT", "PRJ-2026-003", "30 Aug 26", false]],
+    ready: [["HGO WAN cutover — PRJ-2026-003", 6, 6]],
+    rb: [],
+    act: [["Confirm Ops on-site cover for test window", "I. Traoré", "12 Aug 26", false]],
+  },
+  ITY: {
+    golive: [],
+    ms: [["AP mounting — camp block C", "PRJ-2026-006", "10 Aug 26", false], ["SECURITY_GATE — SOC sensors ITY", "PRJ-2026-004", "05 Sep 26", false]],
+    ready: [],
+    rb: [["Log forwarder sizing at SML/ITY", "MAJOR", "29 Aug 26", false]],
+    act: [["Publish Wi-Fi heatmap survey results", "S. Camara", "01 Jul 26", true]],
+  },
+  SML: { golive: [], ms: [["SECURITY_GATE — SML sensors", "PRJ-2026-004", "05 Sep 26", false]], ready: [], rb: [["Log forwarder sizing at SML", "MAJOR", "29 Aug 26", false]], act: [] },
+  MGO: {
+    golive: [["26 Aug 26", "MGO ERP Site Rollout — cutover"]],
+    ms: [["SITE_READINESS — MGO cutover", "PRJ-2026-007", "19 Aug 26", false], ["Super-user training complete", "PRJ-2026-007", "22 Aug 26", false]],
+    ready: [["MGO cutover — PRJ-2026-007", 2, 6]],
+    rb: [["Training room availability", "MINOR", "14 Aug 26", false]],
+    act: [["Load MGO master data extract", "A. Sow", "11 Aug 26", false]],
+  },
+  KGO: {
+    golive: [],
+    ms: [["SITE_READINESS — server room", "PRJ-2026-009", "01 Sep 26", false]],
+    ready: [["KGO server room — PRJ-2026-009", 1, 6]],
+    rb: [["Rack delivery lead time", "MINOR", "30 Sep 26", false]],
+    act: [["Validate genset power budget for IT room", "M. Ouédraogo", "20 Aug 26", false]],
+  },
+};
+const LENS_SITES = ["SGO", "HGO", "ITY", "SML", "MGO", "KGO"];
+let site = "SGO";
+
+const $ = s => document.querySelector(s);
+
+function render() {
+  $("#picker").innerHTML = LENS_SITES.map(s =>
+    `<button class="${s === site ? "active" : ""}" onclick="site='${s}';render()">${s}</button>`).join("");
+
+  const projs = PROJECTS.filter(p => p.sites.includes(site) && !p.confidential);
+  $("#proj-h").textContent = `Active projects at ${site} (${projs.length})`;
+  $("#site-cards").innerHTML = projs.length ? projs.map(projectCard).join("")
+    : `<div class="empty-state"><div class="big">◎</div><b>No active projects at ${site}.</b></div>`;
+
+  const d = SITE_DETAIL[site];
+  $("#golive").style.display = d.golive.length ? "" : "none";
+  $("#golive").innerHTML = `<span class="glabel">Upcoming GO_LIVE</span>` +
+    d.golive.map(([dt, t]) => `<span class="gitem"><b>${dt}</b> — ${t}</span>`).join("");
+
+  $("#site-ms").innerHTML = d.ms.length ? d.ms.map(([t, c, dt, over]) =>
+    `<li>◈ ${t} <span style="color:var(--ink-faint);font-size:.72rem">${c}</span><span class="due ${over ? "over" : ""}">${dt}${over ? " ⚠" : ""}</span></li>`).join("")
+    : `<li style="color:var(--ink-faint)">Nothing due in the next 60 days.</li>`;
+
+  $("#site-ready").innerHTML = d.ready.length ? d.ready.map(([t, done, total]) => `
+    <div style="font-size:.84rem;margin-bottom:6px">${t}</div>
+    <div class="pline" style="display:flex;align-items:center;gap:8px;font-size:.76rem;color:var(--ink-soft)">
+      <div class="progress" style="flex:1"><i style="width:${Math.round(done / total * 100)}%;${done < total ? "background:var(--rag-amber)" : ""}"></i></div>
+      <span>${done}/${total}</span></div>`).join("")
+    : `<div style="font-size:.84rem;color:var(--ink-faint)">No SITE_READINESS milestones here yet.</div>`;
+
+  $("#site-rb").innerHTML = d.rb.length ? d.rb.map(([t, sev, dt, over]) =>
+    `<li><span class="pill ${sev}">${sev}</span> ${t}<span class="due ${over ? "over" : ""}">${dt}</span></li>`).join("")
+    : `<li style="color:var(--rag-green)">✓ No open roadblocks at ${site}.</li>`;
+
+  $("#site-act").innerHTML = d.act.length ? d.act.map(([t, o, dt, over]) =>
+    `<li><input type="checkbox" onchange="toast('Action marked DONE')"> ${t}
+     <span style="color:var(--ink-faint);font-size:.72rem">${o}</span><span class="due ${over ? "over" : ""}">${dt}${over ? " ⚠" : ""}</span></li>`).join("")
+    : `<li style="color:var(--ink-faint)">No open actions owned by ${site} staff.</li>`;
+}
+
+$("#site-deck").onclick = () =>
+  toast(`P6: exports the Group deck pre-filtered to ${site} — title becomes “IT Projects — ${site} — Aug 2026”`);
+
+render();
+</script>
+</body>
+</html>
