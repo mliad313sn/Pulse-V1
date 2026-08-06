@@ -242,7 +242,7 @@ async function listPortfolio(user, filters = {}) {
   if (!filters.includeClosed) where.push(`p.stage <> 'CLOSED'`);
 
   const { rows } = await query(
-    `SELECT p.id, p.code, p.title, p.stage, p.priority, p.confidential,
+    `SELECT p.id, p.code, p.title, p.stage, p.priority, p.confidential, p.exec_commentary,
             p.rag_computed, p.rag_override, p.rag_override_reason, p.rag_signals_json,
             p.progress_pct, p.target_date, p.last_activity_at, p.updated_at,
             ld.code AS lead_division_code,
