@@ -32,6 +32,7 @@ const projectBody = z.object({
   exec_commentary: z.string().max(5000).nullable().optional(),
   portfolio_id: z.number().int().positive().nullable().optional(),
   program_id: z.number().int().positive().nullable().optional(),
+  governance: z.enum(["LITE", "STANDARD"]).optional(),
   divisions: z.array(z.object({
     division_id: z.number().int().positive(),
     role_in_project: z.enum(["LEAD", "ENGAGED", "CONSULTED"]),
@@ -63,7 +64,7 @@ router.post("/", async (req, res, next) => {
 
 router.get("/:projectId", withProjectAccess(), async (req, res, next) => {
   try {
-    res.json(await service.getDetail(req.projectAccess));
+    res.json(await service.getDetail(req.projectAccess, req.user));
   } catch (err) { next(err); }
 });
 

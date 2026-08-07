@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **119/119 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **122/122 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -114,3 +114,13 @@ untouched; Steering notified on submission; Project Room "Changes" tab.
 ## How to resume (future session)
 Read this file + REQUIREMENT_TRACEABILITY.md + DECISIONS.md, run `npm test`,
 then take the next item above as a vertical slice (schema → service → routes → UI → tests → docs).
+
+## Completed: two-tier governance — LITE vs STANDARD (2026-08-07, D-26)
+User directive: keep every guardrail, add flexibility by project complexity,
+reduce bureaucracy. LITE projects need only a description at Gate 0, only a PM
+at Gate 1, only one milestone (plus Steering) at Gate 2, and a go-live check
+only if one is planned — while stage order, Steering-only approvals, the
+critical-roadblock deployment block, close discipline, confidentiality/site/
+finance masking, locking and audit stay identical in both tiers. Tier is set
+by Admin/Division Lead only. The Project Room now shows the next gate's
+met/unmet checklist so gates read as a to-do list, not a surprise rejection.

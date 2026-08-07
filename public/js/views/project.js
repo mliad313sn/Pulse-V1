@@ -26,6 +26,7 @@ export async function renderProject(container, projectId) {
         <h1>${esc(p.title)}</h1>
         <span style="color:var(--ink-faint);font-weight:700;font-size:.8rem">${esc(p.code)}</span>
         <span class="chip prio">${esc(p.priority)}</span>
+        ${p.governance === "LITE" ? '<span class="chip site" title="Light governance: same stages and approvals, lighter gate paperwork">LITE</span>' : ""}
         ${p.confidential ? '<span class="chip conf">CONFIDENTIAL</span>' : ""}
         <span style="margin-left:auto" class="chip stage">${esc(p.stage.replace("_", " "))}</span>
         ${canFull ? '<button class="btn small" id="edit-project">✎ Edit</button>' : ""}
@@ -63,6 +64,18 @@ export async function renderProject(container, projectId) {
           ${canFull ? '<button class="btn primary small" id="save-exec" style="margin-top:8px">Save commentary</button>' : ""}
           <div class="hint" style="color:rgba(255,255,255,.7)">Feeds the deck verbatim.</div>
         </div>
+        ${d.gate && d.gate.next ? `<div class="panel"><h3>Next gate → ${esc(d.gate.next)}</h3>
+          <div class="panel-body" style="font-size:.84rem;display:flex;flex-direction:column;gap:6px">
+            ${d.gate.requirements.map((r) => `<div>${r.met
+              ? '<span style="color:var(--rag-green-text);font-weight:700">✓</span>'
+              : '<span style="color:var(--rag-amber-text);font-weight:700">○</span>'} ${esc(r.label)}</div>`).join("")}
+            <div class="muted" style="border-top:1px solid var(--line);padding-top:6px">
+              ${d.gate.requirements.every((r) => r.met)
+                ? "All requirements met — the stage can be advanced."
+                : "Complete the open items, then advance the stage from ✎ Edit."}
+              ${p.governance === "LITE" ? " · LITE governance: lighter evidence, same approvals." : ""}</div>
+          </div>
+        </div>` : ""}
         <div class="panel"><h3>RAG breakdown</h3>
           <div class="panel-body" style="font-size:.84rem;display:flex;flex-direction:column;gap:7px">
             ${Object.entries({ schedule: "Schedule", roadblocks: "Roadblocks", actions: "Actions", freshness: "Freshness" })
@@ -143,6 +156,11 @@ function editProjectModal(d, reload) {
         <div class="field"><label>Start</label><input name="start" type="date" value="${isoDate(p.start_date)}">
           <label style="margin-top:8px">Target</label><input name="target" type="date" value="${isoDate(p.target_date)}"></div></div>
       <div class="field"><label>Description</label><textarea name="description">${esc(p.description || "")}</textarea></div>
+      ${["ADMIN", "DIVISION_LEAD"].includes(state.user.role) ? `<div class="field"><label>Governance tier</label>
+        <select name="governance">
+          <option value="STANDARD" ${p.governance !== "LITE" ? "selected" : ""}>STANDARD — full gate evidence</option>
+          <option value="LITE" ${p.governance === "LITE" ? "selected" : ""}>LITE — light paperwork for small/simple projects (same stages, same approvals)</option>
+        </select></div>` : ""}
       ${state.user.role === "ADMIN" ? `<div class="field"><label><input type="checkbox" name="confidential" ${p.confidential ? "checked" : ""}> Confidential (hidden from Contributors &amp; Viewers)</label></div>` : ""}`,
     onSave: async (box) => {
       const v = (n) => box.querySelector(`[name=${n}]`).value;
@@ -161,6 +179,8 @@ function editProjectModal(d, reload) {
       };
       const conf = box.querySelector("[name=confidential]");
       if (conf) body.confidential = conf.checked;
+      const gov = box.querySelector("[name=governance]");
+      if (gov) body.governance = gov.value;
       await api.put(`/api/v1/projects/${p.id}`, body);
       toast("Project updated");
       reload();

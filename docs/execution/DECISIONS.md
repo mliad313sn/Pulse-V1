@@ -27,3 +27,15 @@ Continues the numbered decision log in CHANGELOG.md (D-1…D-19 recorded there).
   signal being silently dropped (plan §3.8 no-silent-loss).
 - **D-25 — Risk/CAPA activity counts as freshness.** Plan §26 defines "meaningful
   project activity"; risk and CAPA writes now feed last_activity_at.
+- **D-26 — Two-tier governance (user directive 2026-08-07).** "Keep the guardrails
+  but allow flexibility by project nature/complexity; avoid bureaucracy." Chosen:
+  projects.governance = STANDARD | LITE (migration 014). LITE trims gate EVIDENCE
+  only — G0 needs description alone; G1 needs PM alone; G2 needs one milestone
+  (no deliverable/risk-register demand); G4 requires a done GO_LIVE only if one
+  is planned. NEVER relaxed, either tier: no stage skipping, Steering-only Gate 2
+  and change-request decisions, critical-roadblock deployment block, close
+  discipline (end date + all actions dispositioned), confidentiality/site/finance
+  masking, optimistic locking, immutable baselines/minutes, audit, RAG-override
+  justification. Tier set by Admin/Division Lead only — a PM cannot lighten their
+  own project. Adoption aid: the Project Room now shows the NEXT-GATE CHECKLIST
+  (met/unmet) up front, so gates read as a to-do list instead of a rejection.

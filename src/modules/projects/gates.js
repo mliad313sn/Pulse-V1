@@ -24,32 +24,46 @@ const GOVERNANCE_LABEL = Object.fromEntries(STAGES.map((s) => [s, s]));
 GOVERNANCE_LABEL.ON_HOLD = "ON HOLD";
 
 // Gate prerequisites (plan §13). `project` = field values AFTER the edit;
-// `stats` = { milestoneCount, goLiveDone, deliverableCount, riskCount,
-//             openCriticalRoadblocks, openActions, siteCount }.
+// `stats` = { milestoneCount, goLiveCount, goLiveDone, deliverableCount,
+//             riskCount, openCriticalRoadblocks, openActions, siteCount }.
+//
+// Two governance tiers (projects.governance): STANDARD demands the full
+// evidence set; LITE trims paperwork for small/simple projects. LITE NEVER
+// relaxes the guardrails: stages still cannot be skipped, Gate 2 still needs
+// a Steering Committee approver, critical roadblocks still block deployment,
+// and closing still requires every action dispositioned.
 function requirements(fromStage, toStage, project, stats, actor) {
   const reqs = [];
+  const lite = project.governance === "LITE";
   const has = (v) => v !== null && v !== undefined && String(v).trim() !== "";
   if (fromStage === "IDEA" && toStage === "INITIATION") {
-    reqs.push(
-      { label: "Problem/opportunity described", met: has(project.description) },
-      { label: "Sponsor named", met: has(project.sponsor) },
-      { label: "Strategic pillar set", met: has(project.roadmap_pillar) }
-    );
+    reqs.push({ label: "Problem/opportunity described", met: has(project.description) });
+    if (!lite) {
+      reqs.push(
+        { label: "Sponsor named", met: has(project.sponsor) },
+        { label: "Strategic pillar set", met: has(project.roadmap_pillar) }
+      );
+    }
   }
   if (fromStage === "INITIATION" && toStage === "PLANNING") {
-    reqs.push(
-      { label: "Project manager assigned", met: project.project_manager_id != null },
-      { label: "Target date set", met: has(project.target_date) },
-      { label: "At least one site attached", met: (stats.siteCount || 0) > 0 }
-    );
+    reqs.push({ label: "Project manager assigned", met: project.project_manager_id != null });
+    if (!lite) {
+      reqs.push(
+        { label: "Target date set", met: has(project.target_date) },
+        { label: "At least one site attached", met: (stats.siteCount || 0) > 0 }
+      );
+    }
   }
   if (fromStage === "PLANNING" && toStage === "EXECUTION") {
-    reqs.push(
-      { label: "At least one milestone planned", met: (stats.milestoneCount || 0) > 0 },
-      { label: "At least one deliverable defined", met: (stats.deliverableCount || 0) > 0 },
-      { label: "Initial risk register (≥1 risk)", met: (stats.riskCount || 0) > 0 },
-      { label: "Approver is Steering Committee", met: actor.is_steering_committee === true }
-    );
+    reqs.push({ label: "At least one milestone planned", met: (stats.milestoneCount || 0) > 0 });
+    if (!lite) {
+      reqs.push(
+        { label: "At least one deliverable defined", met: (stats.deliverableCount || 0) > 0 },
+        { label: "Initial risk register (≥1 risk)", met: (stats.riskCount || 0) > 0 }
+      );
+    }
+    // Steering approval is a guardrail, not paperwork — both tiers.
+    reqs.push({ label: "Approver is Steering Committee", met: actor.is_steering_committee === true });
   }
   if (fromStage === "EXECUTION" && toStage === "DEPLOYMENT") {
     reqs.push({
@@ -58,7 +72,15 @@ function requirements(fromStage, toStage, project, stats, actor) {
     });
   }
   if (fromStage === "DEPLOYMENT" && toStage === "RUN") {
-    reqs.push({ label: "GO_LIVE milestone DONE", met: stats.goLiveDone === true });
+    if (lite) {
+      // LITE projects may not plan a formal go-live; if one IS planned it must be done.
+      reqs.push({
+        label: "Any planned GO_LIVE milestone is DONE",
+        met: (stats.goLiveCount || 0) === 0 || stats.goLiveDone === true,
+      });
+    } else {
+      reqs.push({ label: "GO_LIVE milestone DONE", met: stats.goLiveDone === true });
+    }
   }
   if (fromStage === "RUN" && toStage === "CLOSED") {
     reqs.push(

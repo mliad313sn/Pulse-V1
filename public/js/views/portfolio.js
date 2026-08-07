@@ -42,6 +42,7 @@ export function projectCard(p) {
     <div class="row1">
       ${ragDot(p)}
       <span class="code">${esc(p.code)}</span>
+      ${p.governance === "LITE" ? '<span class="chip site" title="Light governance">LITE</span>' : ""}
       ${p.confidential ? '<span class="chip conf">CONFIDENTIAL</span>' : ""}
       <span style="margin-left:auto" class="chip prio">${esc(p.priority)}</span>
     </div>
@@ -80,7 +81,11 @@ function newProjectModal(onDone) {
         <div class="field"><label>Target date</label><input name="target" type="date"></div>
         <div class="field"><label>Stage</label><select name="stage">${["IDEA", "INITIATION", "PLANNING", "EXECUTION", "DEPLOYMENT", "RUN"].map((s) => `<option>${s}</option>`).join("")}</select></div></div>
       <div class="field"><label>Description</label><textarea name="description"></textarea></div>
-      <div class="field"><label>Sponsor</label><input name="sponsor"></div>`,
+      <div class="frow"><div class="field"><label>Sponsor</label><input name="sponsor"></div>
+        <div class="field"><label>Governance tier</label><select name="governance">
+          <option value="STANDARD">STANDARD — full gate evidence</option>
+          <option value="LITE">LITE — small/simple project, lighter paperwork</option>
+        </select><div class="hint">Same stages &amp; approvals either way — LITE only trims required evidence.</div></div></div>`,
     onSave: async (box) => {
       const v = (n) => box.querySelector(`[name=${n}]`).value;
       const multi = (n) => [...box.querySelector(`[name=${n}]`).selectedOptions].map((o) => Number(o.value));
@@ -89,6 +94,7 @@ function newProjectModal(onDone) {
         title: v("title"), priority: v("priority"), lead_division_id: lead,
         project_manager_id: v("pm") ? Number(v("pm")) : null,
         stage: v("stage"), description: v("description") || null, sponsor: v("sponsor") || null,
+        governance: v("governance"),
         start_date: v("start") || null, target_date: v("target") || null,
         divisions: multi("engaged").filter((id) => id !== lead).map((id) => ({ division_id: id, role_in_project: "ENGAGED" })),
         sites: multi("sites"),

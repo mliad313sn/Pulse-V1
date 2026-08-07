@@ -36,10 +36,12 @@ async function assertValidPM(db, pmId) {
 
 // gate-prerequisite counters for the E05 state machine and the War Room
 async function gateStats(projectId) {
-  const [ms, goLive, dl, rk, rb, act, sites] = await Promise.all([
+  const [ms, goLive, goLiveAll, dl, rk, rb, act, sites] = await Promise.all([
     query(`SELECT count(*)::int AS n FROM milestones WHERE project_id = $1 AND deleted_at IS NULL`, [projectId]),
     query(`SELECT count(*)::int AS n FROM milestones WHERE project_id = $1 AND deleted_at IS NULL
             AND type = 'GO_LIVE' AND status = 'DONE'`, [projectId]),
+    query(`SELECT count(*)::int AS n FROM milestones WHERE project_id = $1 AND deleted_at IS NULL
+            AND type = 'GO_LIVE'`, [projectId]),
     query(`SELECT count(*)::int AS n FROM deliverables WHERE project_id = $1 AND deleted_at IS NULL`, [projectId]),
     query(`SELECT count(*)::int AS n FROM risks WHERE project_id = $1 AND deleted_at IS NULL`, [projectId]),
     query(`SELECT count(*)::int AS n FROM roadblocks WHERE project_id = $1 AND deleted_at IS NULL
@@ -50,6 +52,7 @@ async function gateStats(projectId) {
   ]);
   return {
     milestoneCount: ms.rows[0].n, goLiveDone: goLive.rows[0].n > 0,
+    goLiveCount: goLiveAll.rows[0].n,
     deliverableCount: dl.rows[0].n, riskCount: rk.rows[0].n,
     openCriticalRoadblocks: rb.rows[0].n, openActions: act.rows[0].n,
     siteCount: sites.rows[0].n,
@@ -67,7 +70,7 @@ const PROJECT_FIELDS = [
   "operating_status", "hold_reason", "cancel_reason",
   "priority", "start_date", "target_date", "actual_end_date", "budget_note",
   "roadmap_pillar", "confidential", "rag_override", "rag_override_reason", "exec_commentary",
-  "portfolio_id", "program_id",
+  "portfolio_id", "program_id", "governance",
 ];
 
 async function createProject(actor, input) {
@@ -79,8 +82,8 @@ async function createProject(actor, input) {
     const { rows } = await client.query(
       `INSERT INTO projects (code, title, description, lead_division_id, project_manager_id, sponsor,
          stage, priority, start_date, target_date, budget_note, roadmap_pillar, confidential,
-         rag_override, rag_override_reason, exec_commentary, portfolio_id, program_id, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+         rag_override, rag_override_reason, exec_commentary, portfolio_id, program_id, governance, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
        RETURNING *`,
       [
         code, input.title, input.description || null, input.lead_division_id,
@@ -90,7 +93,8 @@ async function createProject(actor, input) {
         input.budget_note || null, input.roadmap_pillar || null,
         input.confidential === true, input.rag_override || null,
         input.rag_override_reason || null, input.exec_commentary || null,
-        input.portfolio_id || null, input.program_id || null, actor.id,
+        input.portfolio_id || null, input.program_id || null,
+        input.governance === "LITE" ? "LITE" : "STANDARD", actor.id,
       ]
     );
     const project = rows[0];
@@ -136,6 +140,11 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
   if (patch.confidential !== undefined && actor.role !== "ADMIN") {
     throw forbidden("Only Admin can change the confidential flag");
   }
+  // Governance tier is set by governance owners — a PM cannot lighten their own gates.
+  if (patch.governance !== undefined && patch.governance !== project.governance &&
+      actor.role !== "ADMIN" && actor.role !== "DIVISION_LEAD") {
+    throw forbidden("Only Admin or Division Leads change the governance tier");
+  }
   if (!expectedUpdatedAt) throw badRequest("updated_at (as last read) is required");
 
   const after = { ...project };
@@ -177,7 +186,8 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
          stage=$8, priority=$9, start_date=$10, target_date=$11, actual_end_date=$12,
          budget_note=$13, roadmap_pillar=$14, confidential=$15, rag_override=$16,
          rag_override_reason=$17, exec_commentary=$18, operating_status=$19,
-         hold_reason=$20, cancel_reason=$21, portfolio_id=$22, program_id=$23, updated_at=now()
+         hold_reason=$20, cancel_reason=$21, portfolio_id=$22, program_id=$23,
+         governance=$24, updated_at=now()
        WHERE id=$1 AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $2::timestamptz) AND deleted_at IS NULL
        RETURNING *`,
       [
@@ -187,7 +197,7 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
         after.actual_end_date, after.budget_note, after.roadmap_pillar, after.confidential,
         after.rag_override, after.rag_override_reason, after.exec_commentary,
         after.operating_status, after.hold_reason, after.cancel_reason,
-        after.portfolio_id, after.program_id,
+        after.portfolio_id, after.program_id, after.governance,
       ]
     );
     if (res.rows.length === 0) {
@@ -316,7 +326,7 @@ async function listPortfolio(user, filters = {}) {
   if (!filters.includeClosed) { where.push(`p.stage <> 'CLOSED'`); where.push(`p.operating_status <> 'CANCELLED'`); }
 
   const { rows } = await query(
-    `SELECT p.id, p.code, p.title, p.stage, p.priority, p.confidential, p.exec_commentary,
+    `SELECT p.id, p.code, p.title, p.stage, p.priority, p.confidential, p.governance, p.exec_commentary,
             p.rag_computed, p.rag_override, p.rag_override_reason, p.rag_signals_json,
             p.progress_pct, p.target_date, p.last_activity_at, p.updated_at, p.operating_status,
             ld.code AS lead_division_code,
@@ -358,7 +368,7 @@ async function listPortfolio(user, filters = {}) {
   return rows;
 }
 
-async function getDetail(projectAccess) {
+async function getDetail(projectAccess, actor) {
   const { project } = projectAccess;
   const pid = project.id;
   const [divisions, sites, milestones, roadblocks, actions, updates, decisions, pm] = await Promise.all([
@@ -399,10 +409,14 @@ async function getDetail(projectAccess) {
       ? query(`SELECT id, name, role, division_id, site_id FROM users WHERE id = $1`, [project.project_manager_id])
       : Promise.resolve({ rows: [] }),
   ]);
+  // Next-gate checklist: show people what's missing BEFORE they try, so
+  // gates read as a checklist, not a rejection (adoption over bureaucracy).
+  const gate = gates.gateStatus(project, await gateStats(pid), actor || { is_steering_committee: false });
   return {
     project: { ...project, divisions: undefined, sites: undefined },
     access: projectAccess.access,
     isPM: projectAccess.isPM,
+    gate,
     pm: pm.rows[0] || null,
     divisions: divisions.rows,
     sites: sites.rows,
