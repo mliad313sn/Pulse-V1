@@ -52,7 +52,13 @@ router.post("/projects/:projectId/attachments", withProjectAccess(), async (req,
 router.get("/attachments/:id", async (req, res, next) => {
   try {
     const row = await service.load(Number(req.params.id));
-    await loadProjectAccess(row.project_id, req.user); // throws concealed 404
+    const pa = await loadProjectAccess(row.project_id, req.user); // throws concealed 404
+    // classification enforcement mirrors the list: CONFIDENTIAL = FULL only,
+    // concealed as 404 so its existence is not confirmed
+    if (row.classification === "CONFIDENTIAL" && pa.access !== "FULL") {
+      const { notFound } = require("../../middleware/errors");
+      throw notFound("Attachment not found");
+    }
     const buf = await service.content(row);
     res.setHeader("Content-Type", row.media_type);
     res.setHeader("Content-Length", String(buf.length));

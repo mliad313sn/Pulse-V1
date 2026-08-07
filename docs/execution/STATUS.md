@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **122/122 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **134/134 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -79,7 +79,61 @@ format and assert confidential titles/codes and finance figures are ABSENT
 for unauthorized users, and site-restricted users export only their site.
 Deps: exceljs+pdfkit+pptxgenjs added (uuid overridden to ^11 — audit stays 0).
 
-## Queue: EMPTY — master-plan completion contract met (2026-08-07)
+## NEW GOAL (2026-08-07): SPM transformation — compete with Planview/Planisware/ServiceNow SPM
+A second /goal directive extends the completed master plan into a Strategic
+Portfolio Management platform. Phases (dependency order; each = tested slices):
+- **P0 Trust & Correctness — DONE this round** (see below)
+- **P1 Strategy & Demand**: OKRs/objectives; demand/idea lifecycle; business
+  cases; scoring (weighted, WSJF, RICE, cost-of-delay, mandatory override);
+  prioritization; demand→project conversion; project templates; custom fields.
+- **P2 Advanced planning**: WBS/summary tasks; effort/remaining; calendars +
+  exceptions; constraints; task baselines + variance; cross-project deps;
+  blast-radius; schedule quality checks; resource leveling. (FS/SS/FF/SF +
+  lag/lead + ES/EF/LS/LF + free float + near-critical DONE in P0.)
+- **P3 Capacity intelligence**: weekly/monthly capacity; BAU/leave/tentative;
+  role-based demand; skills/certs/rates; skill-gap; requests/approvals;
+  matching; scenario capacity; forecasting.
+- **P4 Finance & benefits**: cost plans by fiscal period; ETC/EAC; vendor/PO/
+  contract linkage; EVM (PV/EV/AC/CPI/SPI/BAC/EAC/VAC); benefit realization
+  periods + post-closure observations. (FX/multicurrency DONE in P0.)
+- **P5 Health 2.0**: weighted multi-dimensional signals (schedule/finance/
+  resources/risks/governance/benefits/confidence) with record-level links;
+  progress methodologies (effort/cost/EVM).
+- **P6 Scenarios & optimization**: scenario objects; compare; knapsack-style
+  portfolio optimization under budget/resource/mandatory constraints;
+  promote scenario → change request.
+- **P7 Decision graph**: strategy→…→outcome traceability; why/what-changed/
+  who-approved/blast-radius queries.
+- **P8 Meeting Mode 2.0**: live scenario simulation in Steering meetings;
+  decision→CR conversion; immutable meeting evidence.
+- **P9 Intelligence**: explainable copilot/predictions/anomalies (Claude API
+  adapter, BLOCKED_EXTERNAL for key); never auto-approves.
+- **P10 Platform**: versioned API + OpenAPI; webhooks; Jira/ADO/ServiceNow/
+  Teams/PowerBI/ERP/HRIS/SCIM adapters (contract + fake pattern).
+- **P11 UX**: configurable views (board/timeline/Gantt/heatmap/graph);
+  progressive disclosure per role.
+- **P12 Scale/ops**: Redis coordination; outbox/DLQ; OpenTelemetry; PITR;
+  SLOs; performance tests.
+
+## Completed: SPM Phase 0 — Trust & Correctness (2026-08-07)
+- Fail-closed SESSION_SECRET in production (src/config.js; CI asserts refusal)
+- /healthz liveness + /readyz readiness (DB-checked, 503 when down)
+- GitHub Actions CI: migrate-from-empty, full suite, audit gate, fail-closed check
+- Offline idempotency scoped per (op_id, user) + method/path/body-hash;
+  cross-user op-id collision no longer swallowed; id reuse with different
+  body = 409 (migration 015)
+- Multicurrency-safe money: fx_rates (admin-managed, audited) + FK from
+  budget_lines.currency; EVERY aggregation (financials, exports, portfolio
+  rollups, executive, baseline snapshots) converts to USD base; unknown
+  currency = 400 with guidance
+- Attachments: magic-byte content validation, malware-scan adapter contract
+  (SCAN_MODE; real engine BLOCKED_EXTERNAL), CONFIDENTIAL classification now
+  ENFORCED (FULL-access only, concealed 404)
+- Realtime presenter chair restricted to organizer/Admin/Steering
+- Scheduling kernel v2: FS/SS/FF/SF honored with lag/lead, ES/EF/LS/LF,
+  total + free float, near-critical set (12 unit tests)
+
+## Previous goal: master-plan completion contract met (2026-08-07)
 E30 executed: RA-01…RA-20 evidence map in RELEASE_QUALIFICATION.md, lifecycle
 tail walk + scheduled dispatch automated (qualification.test), backup/restore
 drill re-run on the current 13-migration schema, RELEASE_READINESS.md verdict

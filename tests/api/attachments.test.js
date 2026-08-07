@@ -41,7 +41,7 @@ test("E24 upload: validation, sanitization, versioning; viewer refused", async (
   // hostile path-traversal filename is stripped to its basename
   const up = await contribSGO.post(`/api/v1/projects/${project.id}/attachments`)
     .field("description", "cutover plan")
-    .attach("file", Buffer.from("plan-content-v1"), "../../etc/passwd../cutover plan.pdf");
+    .attach("file", Buffer.from("%PDF-1.4 plan-content-v1"), "../../etc/passwd../cutover plan.pdf");
   assert.equal(up.status, 201);
   attachment = up.body.attachment;
   assert.equal(attachment.filename, "cutover plan.pdf");
@@ -50,7 +50,7 @@ test("E24 upload: validation, sanitization, versioning; viewer refused", async (
 
   // same name again → version 2
   const up2 = await contribSGO.post(`/api/v1/projects/${project.id}/attachments`)
-    .attach("file", Buffer.from("plan-content-v2"), "cutover plan.pdf");
+    .attach("file", Buffer.from("%PDF-1.4 plan-content-v2"), "cutover plan.pdf");
   assert.equal(up2.body.attachment.version, 2);
 
   // viewer (READ) cannot upload
@@ -67,12 +67,12 @@ test("E24 download: content round-trips; confidential project attachment is a co
   const dl = await viewer.agent.get(`/api/v1/attachments/${attachment.id}`).buffer(true)
     .parse((r, cb) => { const c = []; r.on("data", (d) => c.push(d)); r.on("end", () => cb(null, Buffer.concat(c))); });
   assert.equal(dl.status, 200);
-  assert.equal(dl.body.toString(), "plan-content-v1");
+  assert.equal(dl.body.toString(), "%PDF-1.4 plan-content-v1");
   assert.match(dl.headers["content-disposition"], /cutover plan\.pdf/);
 
   // attachment on a confidential project: upload as admin, viewer gets 404 (not 403)
   const conf = await admin.post(`/api/v1/projects/${confProject.id}/attachments`)
-    .attach("file", Buffer.from("secret-brief"), "brief.pdf");
+    .attach("file", Buffer.from("%PDF-1.4 secret-brief"), "brief.pdf");
   assert.equal(conf.status, 201);
   const hidden = await viewer.get(`/api/v1/attachments/${conf.body.attachment.id}`);
   assert.equal(hidden.status, 404, "concealed, indistinguishable from absent");

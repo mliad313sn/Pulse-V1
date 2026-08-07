@@ -22,6 +22,40 @@ const ALLOWED = new Map([
   [".msg", "application/vnd.ms-outlook"],
 ]);
 
+// Phase 0 — content-type is verified by MAGIC BYTES, not just extension:
+// a renamed executable fails even with an allowed extension. Text types are
+// checked for binary content (NUL bytes) instead.
+const MAGIC = {
+  ".pdf": [(b) => b.slice(0, 5).toString() === "%PDF-"],
+  ".png": [(b) => b.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))],
+  ".jpg": [(b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff],
+  ".jpeg": [(b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff],
+  ".docx": [(b) => b.slice(0, 2).toString() === "PK"],
+  ".xlsx": [(b) => b.slice(0, 2).toString() === "PK"],
+  ".pptx": [(b) => b.slice(0, 2).toString() === "PK"],
+  ".msg": [(b) => b.slice(0, 4).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0]))],
+  ".txt": [(b) => !b.slice(0, 8192).includes(0)],
+  ".csv": [(b) => !b.slice(0, 8192).includes(0)],
+};
+
+function assertContentMatchesType(ext, buffer) {
+  const checks = MAGIC[ext];
+  if (!checks || !checks.some((fn) => fn(buffer))) {
+    throw badRequest(`File content does not match its ${ext} extension`);
+  }
+}
+
+// Malware-scan adapter (plan Phase 0): SCAN_MODE=off (default) passes clean;
+// a real engine (e.g. clamd host/port) implements the same contract —
+// BLOCKED_EXTERNAL until scanning infrastructure exists. A failing/positive
+// scan rejects the upload; the file never reaches storage.
+async function scanBuffer(buffer) {
+  const mode = process.env.SCAN_MODE || "off";
+  if (mode === "off") return { clean: true, engine: "none" };
+  if (mode === "reject-all") return { clean: false, engine: "test" }; // test hook
+  throw new Error(`Unknown SCAN_MODE ${mode} — supported: off (clamav adapter pending credentials)`);
+}
+
 // Hostile names: strip any path, control chars, leading dots; keep it short.
 function sanitizeFilename(name) {
   const base = String(name || "").split(/[\\/]/).pop()
@@ -47,6 +81,9 @@ async function create(actor, projectAccess, file, meta = {}) {
   }
   if (!file.buffer.length) throw badRequest("Empty file");
   if (file.buffer.length > MAX_BYTES) throw badRequest("File exceeds the 25 MB limit");
+  assertContentMatchesType(ext, file.buffer);
+  const scan = await scanBuffer(file.buffer);
+  if (!scan.clean) throw badRequest("File rejected by malware scan");
 
   const entityType = meta.entity_type || "project";
   let entityId = meta.entity_id ? Number(meta.entity_id) : null;
@@ -91,6 +128,8 @@ async function create(actor, projectAccess, file, meta = {}) {
 async function list(projectAccess, entityType, entityId) {
   const params = [projectAccess.project.id];
   let where = "a.project_id = $1 AND a.deleted_at IS NULL";
+  // classification enforcement: CONFIDENTIAL documents are FULL-access only
+  if (projectAccess.access !== "FULL") where += " AND a.classification <> 'CONFIDENTIAL'";
   if (entityType) { params.push(entityType); where += ` AND a.entity_type = $${params.length}`; }
   if (entityId) { params.push(Number(entityId)); where += ` AND a.entity_id = $${params.length}`; }
   const { rows } = await query(

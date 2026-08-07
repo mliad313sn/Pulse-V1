@@ -35,7 +35,7 @@ function createApp(options = {}) {
     session({
       store: new PgSession({ pool, tableName: "session" }),
       name: "pulse.sid",
-      secret: process.env.SESSION_SECRET || "dev-only-secret-change-me",
+      secret: require("./config").sessionSecret(),
       resave: false,
       saveUninitialized: false,
       rolling: true,
@@ -100,12 +100,15 @@ function createApp(options = {}) {
     } catch (err) { next(err); }
   });
 
-  app.get("/healthz", async (req, res) => {
+  // liveness: process is up (no dependencies touched)
+  app.get("/healthz", (req, res) => res.json({ ok: true }));
+  // readiness: dependencies reachable — orchestrators gate traffic on this
+  app.get("/readyz", async (req, res) => {
     try {
       await query("SELECT 1");
-      res.json({ ok: true });
+      res.json({ ok: true, db: "up" });
     } catch {
-      res.status(500).json({ ok: false });
+      res.status(503).json({ ok: false, db: "down" });
     }
   });
 

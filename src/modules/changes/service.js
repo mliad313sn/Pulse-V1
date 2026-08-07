@@ -17,8 +17,9 @@ async function snapshot(client, projectId, label, actorId, changeRequestId = nul
     `SELECT start_date, target_date FROM projects WHERE id = $1 AND deleted_at IS NULL`, [projectId]);
   if (!pr.length) throw notFound("Project not found");
   const { rows: bud } = await client.query(
-    `SELECT coalesce(sum(approved),0) AS approved FROM budget_lines
-      WHERE project_id = $1 AND deleted_at IS NULL`, [projectId]);
+    `SELECT coalesce(sum(b.approved * fx.rate_to_base),0) AS approved
+       FROM budget_lines b JOIN fx_rates fx ON fx.currency = b.currency
+      WHERE b.project_id = $1 AND b.deleted_at IS NULL`, [projectId]);
   const { rows: ms } = await client.query(
     `SELECT id, title, type, due_date, status FROM milestones
       WHERE project_id = $1 AND deleted_at IS NULL ORDER BY order_index, due_date NULLS LAST`, [projectId]);

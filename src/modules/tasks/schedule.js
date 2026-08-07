@@ -55,48 +55,89 @@ function wouldCycle(tasks, deps, predecessorId, successorId) {
   }
 }
 
-// Forward/backward pass on active tasks -> per-task {early, late, slack, critical}
-// and the ordered critical path (slack 0, longest chain).
+// Phase 0 — full CPM pass honoring FS/SS/FF/SF with lag (negative lag = lead):
+// ES/EF/LS/LF per task, total float (slack), free float, critical and
+// near-critical (0 < slack <= NEAR_CRITICAL_DAYS) sets.
+const NEAR_CRITICAL_DAYS = 2;
+
 function criticalPath(tasksIn, depsIn) {
   const tasks = tasksIn.filter((t) => t.status !== "CANCELLED");
   const deps = depsIn.filter((d) => !d.deleted_at);
   const { order, preds } = topoSort(tasks, deps);
   const byId = new Map(tasks.map((t) => [t.id, t]));
-  const early = new Map(); // earliest finish offset in days
+
+  // forward pass — earliest start/finish
+  const ES = new Map(), EF = new Map();
   for (const id of order) {
-    const t = byId.get(id);
-    const dur = durationDays(t);
-    let start = 0;
+    const dur = durationDays(byId.get(id));
+    let es = 0;
     for (const d of preds.get(id)) {
-      start = Math.max(start, (early.get(d.predecessor_task_id) || 0) + (d.lag_days || 0));
+      const p = d.predecessor_task_id, lag = d.lag_days || 0;
+      const type = d.dependency_type || "FS";
+      let req;
+      if (type === "SS") req = ES.get(p) + lag;            // start after pred starts
+      else if (type === "FF") req = EF.get(p) + lag - dur; // finish after pred finishes
+      else if (type === "SF") req = ES.get(p) + lag - dur; // finish after pred starts
+      else req = EF.get(p) + lag;                          // FS: start after pred finishes
+      es = Math.max(es, req);
     }
-    early.set(id, start + dur);
+    es = Math.max(es, 0);
+    ES.set(id, es);
+    EF.set(id, es + dur);
   }
-  const projectLength = Math.max(0, ...early.values());
-  // backward pass
+  const projectLength = Math.max(0, ...EF.values());
+
+  // backward pass — latest start/finish (constraints inverted per type)
   const succs = new Map(tasks.map((t) => [t.id, []]));
   for (const d of deps) {
     if (byId.has(d.predecessor_task_id) && byId.has(d.successor_task_id)) {
       succs.get(d.predecessor_task_id).push(d);
     }
   }
-  const late = new Map();
+  const LF = new Map(), LS = new Map();
   for (const id of [...order].reverse()) {
-    const t = byId.get(id);
-    const dur = durationDays(t);
-    let finish = projectLength;
+    const dur = durationDays(byId.get(id));
+    let lf = projectLength;
     for (const d of succs.get(id)) {
-      finish = Math.min(finish, (late.get(d.successor_task_id) || projectLength) - durationDays(byId.get(d.successor_task_id)) - (d.lag_days || 0));
+      const s = d.successor_task_id, lag = d.lag_days || 0;
+      const type = d.dependency_type || "FS";
+      let cap;
+      if (type === "SS") cap = LS.get(s) - lag + dur;      // pred LS <= succ LS - lag
+      else if (type === "FF") cap = LF.get(s) - lag;       // pred LF <= succ LF - lag
+      else if (type === "SF") cap = LF.get(s) - lag + dur; // pred LS <= succ LF - lag
+      else cap = LS.get(s) - lag;                          // FS: pred LF <= succ LS - lag
+      lf = Math.min(lf, cap);
     }
-    late.set(id, finish);
+    LF.set(id, lf);
+    LS.set(id, lf - dur);
   }
+
+  // free float — how far a task can slip without moving ANY successor's earliest dates
   const result = new Map();
   for (const id of order) {
-    const slack = late.get(id) - early.get(id);
-    result.set(id, { earlyFinish: early.get(id), lateFinish: late.get(id), slack, critical: slack === 0 });
+    const slack = LF.get(id) - EF.get(id);
+    let free = projectLength - EF.get(id);
+    for (const d of succs.get(id)) {
+      const s = d.successor_task_id, lag = d.lag_days || 0;
+      const type = d.dependency_type || "FS";
+      let gap;
+      if (type === "SS") gap = ES.get(s) - (ES.get(id) + lag);
+      else if (type === "FF") gap = EF.get(s) - (EF.get(id) + lag);
+      else if (type === "SF") gap = EF.get(s) - (ES.get(id) + lag);
+      else gap = ES.get(s) - (EF.get(id) + lag);
+      free = Math.min(free, gap);
+    }
+    result.set(id, {
+      earlyStart: ES.get(id), earlyFinish: EF.get(id),
+      lateStart: LS.get(id), lateFinish: LF.get(id),
+      slack, freeFloat: Math.max(0, free),
+      critical: slack === 0,
+      nearCritical: slack > 0 && slack <= NEAR_CRITICAL_DAYS,
+    });
   }
   const criticalIds = order.filter((id) => result.get(id).critical);
-  return { projectLength, tasks: result, criticalIds };
+  const nearCriticalIds = order.filter((id) => result.get(id).nearCritical);
+  return { projectLength, tasks: result, criticalIds, nearCriticalIds };
 }
 
 module.exports = { topoSort, wouldCycle, criticalPath, durationDays };

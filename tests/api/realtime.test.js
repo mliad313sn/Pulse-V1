@@ -82,7 +82,7 @@ test("E15 room flow: presenter claims, pivots reach followers; viewer cannot dri
   // viewer cannot claim the room
   follower.send(JSON.stringify({ type: "present" }));
   const deny = await nextMsg(follower, "error");
-  assert.match(deny.error, /Viewers cannot present/);
+  assert.match(deny.error, /Only the organizer, Admin or Steering/);
 
   // non-presenter pivot refused
   follower.send(JSON.stringify({ type: "pivot", context: "item:5" }));

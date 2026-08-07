@@ -9,6 +9,15 @@ const { badRequest, conflict, notFound, forbidden } = require("../../middleware/
 const { loadProjectAccess } = require("../../middleware/authz");
 
 const canFinance = (u) => u.role === "ADMIN" || u.finance_access === true;
+
+// every stored currency must have an FX rate — reject unknown codes up front
+async function assertKnownCurrency(currency) {
+  const { rows } = await query(`SELECT 1 FROM fx_rates WHERE currency = $1`, [currency]);
+  if (!rows.length) {
+    const { rows: all } = await query(`SELECT currency FROM fx_rates ORDER BY currency`);
+    throw badRequest(`Unknown currency ${currency} — no FX rate configured. Known: ${all.map((r) => r.currency).join(", ")} (Admin can add rates)`);
+  }
+}
 const LINE_FIELDS = ["category", "capex_opex", "currency", "approved", "committed", "actual", "forecast", "note"];
 
 async function addLine(actor, projectAccess, input) {
@@ -16,6 +25,7 @@ async function addLine(actor, projectAccess, input) {
   if (projectAccess.access !== "FULL" && actor.role !== "ADMIN" && !actor.finance_access) {
     throw forbidden("Financial access required");
   }
+  await assertKnownCurrency(input.currency || "USD");
   return withTransaction(async (client) => {
     const { rows } = await client.query(
       `INSERT INTO budget_lines (project_id, category, capex_opex, currency, approved, committed,
@@ -39,6 +49,7 @@ async function updateLine(actor, id, patch, expectedUpdatedAt) {
   if (!expectedUpdatedAt) throw badRequest("updated_at (as last read) is required");
   const after = { ...before };
   for (const f of LINE_FIELDS) if (patch[f] !== undefined) after[f] = patch[f];
+  if (after.currency !== before.currency) await assertKnownCurrency(after.currency);
   return withTransaction(async (client) => {
     const res = await client.query(
       `UPDATE budget_lines SET category=$3, capex_opex=$4, currency=$5, approved=$6, committed=$7,
@@ -62,27 +73,61 @@ async function updateLine(actor, id, patch, expectedUpdatedAt) {
 }
 
 // Summary with variance (plan §117: "Forecast 112,000 vs approved 100,000 = +12%")
+// Phase 0: aggregation is FX-safe. Lines keep their native currency; every
+// total is converted to the base currency (USD) using admin-managed fx_rates.
+// The budget_lines.currency FK guarantees a rate exists for every line.
 async function financials(actor, projectAccess) {
   if (!canFinance(actor)) throw forbidden("Financial access required");
   const { rows } = await query(
-    `SELECT * FROM budget_lines WHERE project_id = $1 AND deleted_at IS NULL ORDER BY category`,
+    `SELECT b.*, fx.rate_to_base FROM budget_lines b
+       JOIN fx_rates fx ON fx.currency = b.currency
+      WHERE b.project_id = $1 AND b.deleted_at IS NULL ORDER BY b.category`,
     [projectAccess.project.id]
   );
-  const sum = (f) => rows.reduce((s, r) => s + Number(r[f]), 0);
+  const sum = (f) => Math.round(rows.reduce((s, r) => s + Number(r[f]) * Number(r.rate_to_base), 0) * 100) / 100;
   const approved = sum("approved"), forecast = sum("forecast");
-  const variance = forecast - approved;
+  const variance = Math.round((forecast - approved) * 100) / 100;
+  const currencies = [...new Set(rows.map((r) => r.currency))];
   return {
-    lines: rows,
+    lines: rows.map(({ rate_to_base, ...l }) => l),
     summary: {
-      currency: rows[0]?.currency || "USD",
+      currency: "USD", // base currency of all totals
+      source_currencies: currencies,
+      converted: currencies.some((c) => c !== "USD"),
       approved, committed: sum("committed"), actual: sum("actual"), forecast,
       variance,
       variance_pct: approved > 0 ? Math.round((variance / approved) * 1000) / 10 : null,
       explanation: approved > 0
-        ? `Forecast ${forecast.toLocaleString("en-US")} vs approved ${approved.toLocaleString("en-US")} = ${variance >= 0 ? "+" : ""}${Math.round((variance / approved) * 100)}%`
+        ? `Forecast ${forecast.toLocaleString("en-US")} vs approved ${approved.toLocaleString("en-US")} = ${variance >= 0 ? "+" : ""}${Math.round((variance / approved) * 100)}%${currencies.some((c) => c !== "USD") ? ` (totals in USD, converted from ${currencies.join(", ")})` : ""}`
         : "No approved baseline yet",
     },
   };
+}
+
+// FX administration: rates readable by finance users, settable by Admin only.
+async function listFxRates() {
+  const { rows } = await query(`SELECT currency, rate_to_base, updated_at FROM fx_rates ORDER BY currency`);
+  return rows;
+}
+
+async function setFxRate(actor, currency, rate) {
+  if (actor.role !== "ADMIN") throw forbidden("Only Admin manages FX rates");
+  if (!/^[A-Z]{3}$/.test(currency)) throw badRequest("Currency must be a 3-letter code");
+  if (!(rate > 0)) throw badRequest("Rate must be positive");
+  return withTransaction(async (client) => {
+    const { rows } = await client.query(
+      `INSERT INTO fx_rates (currency, rate_to_base, updated_by)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (currency) DO UPDATE SET rate_to_base = $2, updated_at = now(), updated_by = $3
+       RETURNING *`,
+      [currency, rate, actor.id]
+    );
+    await audit.record(client, {
+      entity: "fx_rate", entityId: 0, userId: actor.id,
+      changes: [{ field: currency, old: null, new: String(rate) }],
+    });
+    return rows[0];
+  });
 }
 
 // ===== E18 benefits (operational visibility, normal project access) =====
@@ -147,4 +192,4 @@ async function listBenefits(projectAccess) {
   return rows;
 }
 
-module.exports = { addLine, updateLine, financials, addBenefit, updateBenefit, listBenefits, canFinance };
+module.exports = { addLine, updateLine, financials, addBenefit, updateBenefit, listBenefits, canFinance, listFxRates, setFxRate };

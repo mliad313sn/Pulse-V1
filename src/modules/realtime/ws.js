@@ -9,7 +9,7 @@ const crypto = require("crypto");
 const { WebSocketServer } = require("ws");
 const { query } = require("../../db/pool");
 
-const SECRET = () => process.env.SESSION_SECRET || "dev-only-secret-change-me";
+const SECRET = () => require("../../config").sessionSecret();
 
 // express-session cookie: pulse.sid=s%3A<sid>.<hmac-sha256-base64-no-pad>
 function sidFromCookieHeader(header) {
@@ -94,10 +94,11 @@ function attach(server) {
         const meetingId = Number(msg.meetingId);
         if (!Number.isInteger(meetingId) || meetingId <= 0) return;
         const { rows } = await query(
-          `SELECT id, status FROM meetings WHERE id = $1 AND deleted_at IS NULL`, [meetingId]);
+          `SELECT id, status, created_by FROM meetings WHERE id = $1 AND deleted_at IS NULL`, [meetingId]);
         if (!rows.length) { ws.send(JSON.stringify({ type: "error", error: "Meeting not found" })); return; }
         if (ws.meetingId) room(ws.meetingId).clients.delete(ws);
         ws.meetingId = meetingId;
+        ws.meetingCreatedBy = rows[0].created_by;
         const r = room(meetingId);
         r.clients.add(ws);
         ws.send(JSON.stringify(roomState(r))); // late joiners get the live context
@@ -109,10 +110,13 @@ function attach(server) {
       if (!r) return;
 
       if (msg.type === "present") {
-        // Viewers never drive the room; others may claim a free chair;
-        // Admin/Steering can take over a stale presenter.
-        if (ws.user.role === "VIEWER") {
-          ws.send(JSON.stringify({ type: "error", error: "Viewers cannot present" }));
+        // Phase 0: the chair follows the same drive rule as the meeting itself —
+        // organizer, Admin or Steering. Attendees follow; they never drive.
+        const canPresent = ws.user.role === "ADMIN" ||
+          ws.user.is_steering_committee === true ||
+          ws.meetingCreatedBy === ws.user.id;
+        if (!canPresent) {
+          ws.send(JSON.stringify({ type: "error", error: "Only the organizer, Admin or Steering can present" }));
           return;
         }
         const takeover = ws.user.role === "ADMIN" || ws.user.is_steering_committee === true;

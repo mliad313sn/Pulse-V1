@@ -74,4 +74,17 @@ router.put("/benefits/:id", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ===== FX rates (Phase 0 multicurrency) =====
+router.get("/fx-rates", async (req, res, next) => {
+  try { res.json({ rates: await service.listFxRates() }); }
+  catch (err) { next(err); }
+});
+
+router.put("/fx-rates/:currency", async (req, res, next) => {
+  try {
+    const { rate } = z.object({ rate: z.number().positive() }).parse(req.body);
+    res.json({ rate: await service.setFxRate(req.user, String(req.params.currency).toUpperCase(), rate) });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

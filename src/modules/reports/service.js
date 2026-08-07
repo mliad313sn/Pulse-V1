@@ -256,8 +256,10 @@ async function executive(user) {
   let finance = null;
   if (user.role === "ADMIN" || user.finance_access === true) {
     const fin = await query(
-      `SELECT coalesce(sum(bl.approved),0)::float AS approved, coalesce(sum(bl.forecast),0)::float AS forecast
+      `SELECT coalesce(sum(bl.approved * fx.rate_to_base),0)::float AS approved,
+              coalesce(sum(bl.forecast * fx.rate_to_base),0)::float AS forecast
          FROM budget_lines bl JOIN projects p ON p.id = bl.project_id
+         JOIN fx_rates fx ON fx.currency = bl.currency
         WHERE ${scope} AND bl.deleted_at IS NULL AND p.stage <> 'CLOSED'`, params);
     const f = fin.rows[0];
     finance = { approved: f.approved, forecast: f.forecast, variance: f.forecast - f.approved };

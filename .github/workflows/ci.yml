@@ -1,0 +1,42 @@
+name: CI
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: pulse
+          POSTGRES_PASSWORD: pulse
+          POSTGRES_DB: pulse_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U pulse"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL_TEST: postgres://pulse:pulse@localhost:5432/pulse_test
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Migrations apply from empty database
+        run: DATABASE_URL=postgres://pulse:pulse@localhost:5432/pulse_test node src/db/migrate.js
+      - name: Full test suite
+        run: npm test
+      - name: Dependency audit (fails on any known vulnerability)
+        run: npm audit --audit-level=low
+      - name: Production fail-closed check (must refuse to boot without SESSION_SECRET)
+        run: |
+          set +e
+          NODE_ENV=production DATABASE_URL=postgres://pulse:pulse@localhost:5432/pulse_test node -e "require('./src/config').sessionSecret()"
+          if [ $? -eq 0 ]; then echo "config accepted missing secret in production" && exit 1; fi
+          echo "fail-closed OK"

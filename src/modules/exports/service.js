@@ -37,9 +37,11 @@ async function financeTotals(rows) {
   if (!rows.length) return { approved: 0, forecast: 0, actual: 0 };
   const ids = rows.map((p) => p.id);
   const { rows: fin } = await query(
-    `SELECT coalesce(sum(approved),0) AS approved, coalesce(sum(forecast),0) AS forecast,
-            coalesce(sum(actual),0) AS actual
-       FROM budget_lines WHERE deleted_at IS NULL AND project_id = ANY($1::bigint[])`,
+    `SELECT coalesce(sum(b.approved * fx.rate_to_base),0) AS approved,
+            coalesce(sum(b.forecast * fx.rate_to_base),0) AS forecast,
+            coalesce(sum(b.actual * fx.rate_to_base),0) AS actual
+       FROM budget_lines b JOIN fx_rates fx ON fx.currency = b.currency
+      WHERE b.deleted_at IS NULL AND b.project_id = ANY($1::bigint[])`,
     [ids]
   );
   return { approved: Number(fin[0].approved), forecast: Number(fin[0].forecast), actual: Number(fin[0].actual) };
@@ -80,10 +82,12 @@ async function portfolioXlsx(user, filters) {
   let finByProject = new Map();
   if (finance && rows.length) {
     const { rows: fin } = await query(
-      `SELECT project_id, coalesce(sum(approved),0) AS approved,
-              coalesce(sum(forecast),0) AS forecast, coalesce(sum(actual),0) AS actual
-         FROM budget_lines WHERE deleted_at IS NULL AND project_id = ANY($1::bigint[])
-        GROUP BY project_id`,
+      `SELECT b.project_id, coalesce(sum(b.approved * fx.rate_to_base),0) AS approved,
+              coalesce(sum(b.forecast * fx.rate_to_base),0) AS forecast,
+              coalesce(sum(b.actual * fx.rate_to_base),0) AS actual
+         FROM budget_lines b JOIN fx_rates fx ON fx.currency = b.currency
+        WHERE b.deleted_at IS NULL AND b.project_id = ANY($1::bigint[])
+        GROUP BY b.project_id`,
       [rows.map((p) => p.id)]
     );
     finByProject = new Map(fin.map((f) => [f.project_id, f]));

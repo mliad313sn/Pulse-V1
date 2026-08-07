@@ -39,3 +39,12 @@ Continues the numbered decision log in CHANGELOG.md (D-1…D-19 recorded there).
   justification. Tier set by Admin/Division Lead only — a PM cannot lighten their
   own project. Adoption aid: the Project Room now shows the NEXT-GATE CHECKLIST
   (met/unmet) up front, so gates read as a to-do list instead of a rejection.
+- **D-27 — SPM transformation Phase 0 (2026-08-07).** New /goal (compete with
+  Planview/Planisware/ServiceNow SPM) executed as staged slices on top of the
+  completed master plan. Phase 0 choices: base currency = USD with admin-managed
+  fx_rates and an FK guaranteeing convertibility (no silent cross-currency sums);
+  idempotency key = (op_id, user) + body hash (reuse with different body = 409);
+  presenter chair = organizer/Admin/Steering (same rule as meeting drive);
+  attachment content verified by magic bytes with a SCAN_MODE adapter
+  (real scanner BLOCKED_EXTERNAL); CPM kernel upgraded in place keeping the
+  existing API surface (earlyFinish/lateFinish/slack/critical preserved).

@@ -138,10 +138,10 @@ async function listPortfolios(user) {
               WHERE pd.deleted_at IS NULL AND pd.project_id IN
                 (SELECT p.id FROM projects p WHERE p.portfolio_id = pf.id AND ${vis})) AS division_count,
             ${canFinance ? `(SELECT json_build_object(
-                'approved', coalesce(sum(b.approved), 0),
-                'forecast', coalesce(sum(b.forecast), 0),
-                'actual', coalesce(sum(b.actual), 0))
-               FROM budget_lines b
+                'approved', coalesce(sum(b.approved * fx.rate_to_base), 0),
+                'forecast', coalesce(sum(b.forecast * fx.rate_to_base), 0),
+                'actual', coalesce(sum(b.actual * fx.rate_to_base), 0))
+               FROM budget_lines b JOIN fx_rates fx ON fx.currency = b.currency
               WHERE b.deleted_at IS NULL AND b.project_id IN
                 (SELECT p.id FROM projects p WHERE p.portfolio_id = pf.id AND ${vis}))` : "NULL::json"} AS finance,
             (SELECT count(*)::int FROM benefits bn
