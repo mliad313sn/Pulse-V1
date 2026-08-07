@@ -2,6 +2,7 @@
 import { api, state } from "../lib/api.js";
 import { esc, fmtDate, ragDot, modal, toast, showError, optionList, emptyState } from "../lib/ui.js";
 import { connectPresenter, disconnectPresenter } from "../lib/presenter.js";
+import { icon } from "../lib/icons.js";
 
 const canManage = () => ["ADMIN", "DIVISION_LEAD"].includes(state.user.role);
 
@@ -10,7 +11,7 @@ export async function renderMeetings(container) {
   container.innerHTML = `
     <div class="page-head"><h1>Meetings</h1>
       <span class="sub">The tool IS the meeting — agenda, capture and minutes live here</span>
-      ${canManage() ? '<button class="btn navy" id="new-meeting" style="margin-left:auto">＋ Prepare meeting</button>' : ""}
+      ${canManage() ? `<button class="btn navy" id="new-meeting" style="margin-left:auto">${icon("plus")}Prepare meeting</button>` : ""}
     </div>
     <div class="panel">
       ${res.meetings.length ? res.meetings.map((mt) => `
@@ -72,7 +73,7 @@ export async function renderMeetingLive(container, meetingId) {
 function renderPrepare(container, d) {
   const mt = d.meeting;
   container.innerHTML = `
-    <a href="#/meetings" style="font-size:.8rem;color:var(--ink-soft)">← Meetings</a>
+    <a href="#/meetings" style="font-size:.8rem;color:var(--ink-soft)">${icon("chevronLeft")}Meetings</a>
     <div class="page-head" style="margin-top:8px"><h1>${esc(mt.title)}</h1>
       <span class="mstatus PLANNED">PLANNED</span>
       <span class="sub">${fmtDate(mt.date)} · ${esc(mt.type.replace(/_/g, " "))}${mt.site_id ? " · site-scoped" : ""}</span>
@@ -93,7 +94,7 @@ function renderPrepare(container, d) {
       </tr>`).join("")}</table>
       ${d.canDrive ? `<div class="quickadd" style="border-radius:0 0 8px 8px;border-top:1px solid var(--line);border-bottom:0">
         <select id="add-project">${optionList([], "id", () => "")}</select>
-        <button class="btn navy small" id="add-item">＋ Add project item</button></div>` : ""}
+        <button class="btn navy small" id="add-item">${icon("plus")}Add project item</button></div>` : ""}
     </div>
     <div class="section-title">Attendees (${d.attendees.length})</div>
     <div class="panel"><div class="panel-body">${d.attendees.map((a) => `<span class="chip div">${esc(a.name)}</span>`).join(" ") || '<span class="muted">None picked yet.</span>'}</div></div>`;
@@ -174,8 +175,8 @@ function renderLive(container, d) {
       <span class="mscope">Room follows the presenter live · GMT</span>
       <span id="rt-status" class="chip div" title="Realtime room">⇄ connecting…</span>
       <div class="mprog"><span>Item ${items.length ? liveIdx + 1 : 0} / ${items.length}</span>
-        ${d.canDrive ? `<button class="btn small" style="background:#fff;color:var(--edv-navy)" id="rt-present">📡 Present to room</button>` : ""}
-        ${d.canDrive ? `<button class="btn small" style="background:#fff;color:var(--edv-navy)" id="close-meeting">■ Close &amp; generate minutes</button>` : ""}</div>
+        ${d.canDrive ? `<button class="btn small" style="background:#fff;color:var(--edv-navy)" id="rt-present">${icon("broadcast")}Present to room</button>` : ""}
+        ${d.canDrive ? `<button class="btn small" style="background:#fff;color:var(--edv-navy)" id="close-meeting">${icon("stop")}Close &amp; generate minutes</button>` : ""}</div>
     </div>
     ${projBlock}
     <div class="captured" style="background:var(--surface-card);border:1px dashed var(--line);color:var(--ink)">
@@ -184,15 +185,15 @@ function renderLive(container, d) {
         ${esc(c.text)}${c.owner ? ` — ${esc(c.owner)}` : ""}${c.project_code ? ` — ${esc(c.project_code)}` : ""}
         ${c.kind === "decision" ? (c.change_request_id
           ? ` <span class="chip stage" title="Converted to change request">CR #${c.change_request_id}</span>`
-          : (d.canDrive ? ` <button class="btn small convert-cr" data-id="${c.id}" data-text="${esc(c.text)}" title="Convert this decision into a governed change request">→ Change request</button>` : "")) : ""}</li>`).join("") || "<li class='muted'>Nothing captured yet.</li>"}</ul>
+          : (d.canDrive ? ` <button class="btn small convert-cr" data-id="${c.id}" data-text="${esc(c.text)}" title="Convert this decision into a governed change request">${icon("arrowRight")}Change request</button>` : "")) : ""}</li>`).join("") || "<li class='muted'>Nothing captured yet.</li>"}</ul>
     </div>
     ${d.canDrive ? `<div class="capture-bar" style="position:sticky;bottom:0;margin:20px -22px -22px;border-radius:0">
       <span class="cap-label">CAPTURE →</span>
-      <button class="cap" data-kind="action">+ Action</button>
-      <button class="cap" data-kind="decision">+ Decision</button>
-      <button class="cap" data-kind="roadblock">+ Roadblock</button>
-      <button class="cap" data-kind="note">✎ Note</button>
-      <button class="cap" id="simulate-btn" title="Evaluate a portfolio scenario live — nothing is changed">⚗ Simulate</button>
+      <button class="cap" data-kind="action">${icon("plus")}Action</button>
+      <button class="cap" data-kind="decision">${icon("plus")}Decision</button>
+      <button class="cap" data-kind="roadblock">${icon("plus")}Roadblock</button>
+      <button class="cap" data-kind="note">${icon("pencil")}Note</button>
+      <button class="cap" id="simulate-btn" title="Evaluate a portfolio scenario live — nothing is changed">${icon("beaker")}Simulate</button>
       <div class="nav-btns">
         <button id="prev" ${liveIdx === 0 ? "disabled" : ""}>‹ Prev</button>
         <button id="next" ${liveIdx >= items.length - 1 ? "disabled" : ""}>Next ›</button>
@@ -353,12 +354,12 @@ function captureModal(d, currentItem, kind, reload) {
 function renderMinutes(container, d) {
   const mt = d.meeting;
   container.innerHTML = `
-    <a href="#/meetings" style="font-size:.8rem;color:var(--ink-soft)">← Meetings</a>
+    <a href="#/meetings" style="font-size:.8rem;color:var(--ink-soft)">${icon("chevronLeft")}Meetings</a>
     <div class="page-head" style="margin-top:8px"><h1>${esc(mt.title)} — Minutes</h1>
       <span class="mstatus CLOSED">CLOSED</span>
       <span style="margin-left:auto"></span>
-      <button class="btn" id="print-minutes">🖨 Print / PDF</button>
-      <button class="btn primary" id="copy-minutes">⧉ Copy for email</button>
+      <button class="btn" id="print-minutes">${icon("printer")}Print / PDF</button>
+      <button class="btn primary" id="copy-minutes">${icon("copy")}Copy for email</button>
     </div>
     <iframe class="minutes-frame" src="/api/v1/meetings/${mt.id}/minutes.html"></iframe>`;
   container.querySelector("#print-minutes").onclick = () => {

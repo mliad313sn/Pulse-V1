@@ -3,6 +3,7 @@ import { api, state } from "../lib/api.js";
 import { esc, fmtDate, isoDate, ragDot, avatar, modal, toast, showError, optionList, emptyState } from "../lib/ui.js";
 import { exportProjectDeck } from "../lib/deck.js";
 import { renderGantt, renderBoard } from "./gantt.js";
+import { icon } from "../lib/icons.js";
 
 const STAGES = ["IDEA", "INITIATION", "PLANNING", "EXECUTION", "DEPLOYMENT", "RUN"];
 let activeTab = "timeline";
@@ -21,7 +22,7 @@ export async function renderProject(container, projectId) {
       <span class="node">${s}</span>${i < STAGES.length - 1 ? '<span class="bar"></span>' : ""}</span>`).join("");
 
   container.innerHTML = `
-    <a href="#/portfolio" style="font-size:.8rem;color:var(--ink-soft)">← Portfolio</a>
+    <a href="#/portfolio" style="font-size:.8rem;color:var(--ink-soft)">${icon("chevronLeft")}Portfolio</a>
     <div class="proj-header" style="margin-top:8px">
       <div class="toprow">
         ${ragDot(p)}
@@ -31,8 +32,8 @@ export async function renderProject(container, projectId) {
         ${p.governance === "LITE" ? '<span class="chip site" title="Light governance: same stages and approvals, lighter gate paperwork">LITE</span>' : ""}
         ${p.confidential ? '<span class="chip conf">CONFIDENTIAL</span>' : ""}
         <span style="margin-left:auto" class="chip stage">${esc(p.stage.replace("_", " "))}</span>
-        ${canFull ? '<button class="btn small" id="edit-project">✎ Edit</button>' : ""}
-        <button class="btn primary small" id="export-project-deck">⬇ Project deck</button>
+        ${canFull ? `<button class="btn small" id="edit-project">${icon("pencil")}Edit</button>` : ""}
+        <button class="btn primary small" id="export-project-deck">${icon("download")}Project deck</button>
       </div>
       <div class="stepper">${stepper}${p.operating_status === "ON_HOLD" ? '<span class="chip stage HOLD" style="margin-left:10px">ON HOLD</span>' : ""}${p.operating_status === "CANCELLED" ? '<span class="chip conf" style="margin-left:10px">CANCELLED</span>' : ""}</div>
       <div class="facts">
@@ -70,12 +71,12 @@ export async function renderProject(container, projectId) {
         ${d.gate && d.gate.next ? `<div class="panel"><h3>Next gate → ${esc(d.gate.next)}</h3>
           <div class="panel-body" style="font-size:.84rem;display:flex;flex-direction:column;gap:6px">
             ${d.gate.requirements.map((r) => `<div>${r.met
-              ? '<span style="color:var(--rag-green-text);font-weight:700">✓</span>'
-              : '<span style="color:var(--rag-amber-text);font-weight:700">○</span>'} ${esc(r.label)}</div>`).join("")}
+              ? `<span class="gate-met">${icon("check", { size: 14 })}</span>`
+              : '<span class="gate-open" aria-hidden="true"></span>'} ${esc(r.label)}</div>`).join("")}
             <div class="muted" style="border-top:1px solid var(--line);padding-top:6px">
               ${d.gate.requirements.every((r) => r.met)
                 ? "All requirements met — the stage can be advanced."
-                : "Complete the open items, then advance the stage from ✎ Edit."}
+                : "Complete the open items, then advance the stage from Edit."}
               ${p.governance === "LITE" ? " · LITE governance: lighter evidence, same approvals." : ""}</div>
           </div>
         </div>` : ""}
@@ -740,7 +741,7 @@ function changesTab(d, canFull, canPartial, reload) {
       <div class="panel" style="margin-top:14px">
         <h3 style="padding:10px 14px 0">Change requests</h3>
         <div class="panel-body">
-        ${canPartial || canFull ? '<button class="btn navy small" id="new-cr">＋ New change request</button>' : ""}
+        ${canPartial || canFull ? `<button class="btn navy small" id="new-cr">${icon("plus")}New change request</button>` : ""}
         ${crs.changeRequests.length ? `<ul class="simple-list" style="margin-top:8px">
           ${crs.changeRequests.map((c) => `<li>
             <span class="pill ${pillFor(c.status)}">${c.status}</span>

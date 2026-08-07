@@ -47,3 +47,37 @@
   --shadow-card: 0 1px 3px rgba(26, 58, 95, 0.10), 0 1px 2px rgba(26, 58, 95, 0.06);
   --shadow-pop: 0 6px 24px rgba(26, 58, 95, 0.18);
 }
+
+/* ===========================================================================
+   SCALES — added in the frontend refinement pass.
+   Before this, spacing and type sizes were chosen per-element inline, which is
+   why the UI read as assembled rather than designed. Everything below is a
+   fixed step: if a value is not on a scale, it does not belong in the markup.
+   =========================================================================== */
+:root {
+  /* Spacing — 4px base, geometric enough to stay distinguishable */
+  --s-1: 4px;   --s-2: 8px;   --s-3: 12px;  --s-4: 16px;
+  --s-5: 20px;  --s-6: 24px;  --s-8: 32px;  --s-10: 40px;  --s-12: 56px;
+
+  /* Type — one ratio, no in-between sizes */
+  --t-xs:   0.72rem;   /* eyebrows, table headers, chips */
+  --t-sm:   0.82rem;   /* secondary text, dense tables */
+  --t-base: 0.93rem;   /* body, controls */
+  --t-md:   1.06rem;   /* card titles */
+  --t-lg:   1.32rem;   /* section headings */
+  --t-xl:   1.75rem;   /* page titles */
+  --t-2xl:  2.2rem;    /* hero figures */
+
+  --lh-tight: 1.2;
+  --lh-body: 1.5;
+  --tracking-caps: .08em;
+
+  /* Elevation — two steps only; more reads as decoration */
+  --e-1: 0 1px 2px rgba(23,41,61,.06), 0 1px 3px rgba(23,41,61,.08);
+  --e-2: 0 4px 16px rgba(23,41,61,.10), 0 1px 3px rgba(23,41,61,.06);
+
+  --r-sm: 4px;  --r-md: 6px;  --r-lg: 10px;  --r-full: 999px;
+
+  --focus-ring: 0 0 0 2px var(--surface-card), 0 0 0 4px var(--edv-orange);
+  --motion-fast: 110ms cubic-bezier(.2,.6,.35,1);
+}

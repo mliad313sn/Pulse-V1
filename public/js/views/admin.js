@@ -1,6 +1,7 @@
 "use strict";
 import { api, state } from "../lib/api.js";
 import { esc, modal, toast, optionList, fmtDate } from "../lib/ui.js";
+import { icon } from "../lib/icons.js";
 
 export async function renderAdmin(container) {
   const [usersRes, auditRes] = await Promise.all([
@@ -12,7 +13,7 @@ export async function renderAdmin(container) {
   container.innerHTML = `
     <div class="page-head"><h1>Admin</h1>
       <span class="sub">Users, roles &amp; audit trail</span>
-      <button class="btn navy" id="new-user" style="margin-left:auto">＋ New user</button></div>
+      <button class="btn navy" id="new-user" style="margin-left:auto">${icon("plus")}New user</button></div>
     <div class="panel" style="margin-bottom:20px"><table class="dtable">
       <tr><th>Name</th><th>Email</th><th>Role</th><th>Division</th><th>Site</th><th>Status</th><th></th></tr>
       ${usersRes.users.map((u) => `<tr>

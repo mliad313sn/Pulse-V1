@@ -3,6 +3,7 @@ import { api, state } from "../lib/api.js";
 import { esc, fmtDate, emptyState, toast } from "../lib/ui.js";
 import { projectCard } from "./portfolio.js";
 import { exportGroupDeck } from "../lib/deck.js";
+import { icon } from "../lib/icons.js";
 
 const LENS_SITES = ["SGO", "HGO", "ITY", "SML", "MGO", "KGO", "DKR", "ABJ", "OUA"];
 
@@ -14,7 +15,7 @@ export async function renderSiteLens(container, siteCode) {
   container.innerHTML = `
     <div class="page-head"><h1>Site Lens</h1>
       <span class="sub">Everything about one site — the site IT manager's daily page</span>
-      <button class="btn primary" id="site-deck" style="margin-left:auto">⬇ Export ${esc(site)} deck</button>
+      <button class="btn primary" id="site-deck" style="margin-left:auto">${icon("download")}Export ${esc(site)} deck</button>
     </div>
     <div class="site-picker">${LENS_SITES.map((s) =>
       `<button class="${s === site ? "active" : ""}" data-site="${s}">${s}</button>`).join("")}</div>

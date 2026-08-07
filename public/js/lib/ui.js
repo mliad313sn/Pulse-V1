@@ -1,6 +1,7 @@
 "use strict";
 // Tiny DOM helpers — no framework, no build (plan §6).
 import { t } from "./i18n.js";
+import { icon as iconSvg } from "./icons.js";
 
 export function esc(s) {
   return String(s ?? "")
@@ -77,14 +78,24 @@ export function avatar(name, alt = false, size = 26) {
   return `<span class="avatar ${alt ? "alt" : ""}" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.42)}px">${esc(initials)}</span>`;
 }
 
-export function emptyState(icon, title, hint) {
-  return `<div class="empty-state"><div class="big">${icon}</div><b>${esc(title)}</b>${hint ? `<br>${esc(hint)}` : ""}</div>`;
+// Empty states take an ICON NAME, not a glyph character. Callers may still
+// pass a legacy glyph; it is mapped to the nearest real icon rather than
+// rendered as text at 2rem, which is what made empty screens look unfinished.
+const LEGACY_GLYPH = {
+  "▦": "grid", "▤": "layers", "▶": "presentation", "◎": "pin", "☑": "checkSquare",
+  "⚑": "flag", "◇": "lightbulb", "◆": "diamond", "✎": "pencil", "📊": "chart",
+  "⚙": "settings", "◷": "clock", "⧗": "gauge", "🔍": "search", "📄": "list",
+};
+export function emptyState(name, title, hint) {
+  const iconName = LEGACY_GLYPH[name] || name;
+  return `<div class="empty">${iconSvg(iconName, { size: 28 })}<b>${esc(title)}</b>${
+    hint ? `<span>${esc(hint)}</span>` : ""}</div>`;
 }
 
 // Minimal modal. fields render inside; onSave called with the modal element.
 export function modal({ title, body, saveLabel = "Save", onSave, wide }) {
   const back = el(`<div class="modal-back"><div class="modal" ${wide ? 'style="width:820px"' : ""}>
-    <header><h2>${esc(title)}</h2><button class="x" type="button">✕</button></header>
+    <header><h2>${esc(title)}</h2><button class="x" type="button" aria-label="Close">${iconSvg("close", { size: 18 })}</button></header>
     <div class="m-body">${body}</div>
     <footer>
       <button class="btn" type="button" data-act="cancel">Cancel</button>

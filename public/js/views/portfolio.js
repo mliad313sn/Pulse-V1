@@ -3,6 +3,7 @@ import { api, state } from "../lib/api.js";
 import { el, esc, fmtDate, daysUntil, ragDot, avatar, emptyState, effectiveRag, optionList, modal, toast } from "../lib/ui.js";
 import { exportGroupDeck } from "../lib/deck.js";
 import { t } from "../lib/i18n.js";
+import { icon } from "../lib/icons.js";
 
 const FILTERS = { division: "", site: "", stage: "", rag: "", priority: "", pm: "", q: "", portfolio: "", program: "" };
 
@@ -29,7 +30,7 @@ export function projectCard(p) {
     .map((d) => `<span class="chip div ${d.role === "LEAD" ? "lead" : ""}">${esc(d.code)}</span>`).join("");
   const siteChips = (p.sites || []).map((s) => `<span class="chip site">${esc(s)}</span>`).join("");
   const rb = p.top_roadblock
-    ? `<span class="warn">⚑ ${esc(p.top_roadblock.title)} (${esc(p.top_roadblock.severity)})</span>`
+    ? `<span class="warn">${icon("flag", { size: 13 })} ${esc(p.top_roadblock.title)} (${esc(p.top_roadblock.severity)})</span>`
     : `<span style="color:var(--rag-green-text)">✓ No open roadblocks</span>`;
   const nm = p.next_milestone
     ? `◈ Next: ${esc(p.next_milestone.title)} — <b>${fmtDate(p.next_milestone.due_date)}</b>`
@@ -117,7 +118,7 @@ export async function renderPortfolio(container) {
   container.innerHTML = `
     <div class="page-head"><h1>${t("wall.title")}</h1>
       <span class="sub">${t("wall.sub")}</span>
-      ${["ADMIN", "DIVISION_LEAD"].includes(state.user.role) ? `<button class="btn navy" id="new-project" style="margin-left:auto">${t("wall.newProject")}</button>` : ""}
+      ${["ADMIN", "DIVISION_LEAD"].includes(state.user.role) ? `<button class="btn primary push" id="new-project">${icon("plus")}${t("wall.newProject")}</button>` : ""}
     </div>
     <div class="kpi-banner" id="kpis"></div>
     <div class="filterbar">

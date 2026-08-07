@@ -633,3 +633,205 @@ button.inline-link { background:none; border:none; font:inherit; padding:0; }
 .prov-model { color: var(--rag-amber-text); }
 .prov-meas { color: var(--rag-green-text); }
 .prov-mixed { color: var(--ink-faint); }
+
+/* ===========================================================================
+   REFINEMENT LAYER
+   Written after an assessment that found 163 inline style attributes and glyph
+   characters used as iconography. This layer gives the surfaces that carry the
+   product — icons, buttons, tables, panels, headers, empty states — one
+   consistent treatment, so screens stop looking individually improvised.
+   =========================================================================== */
+
+/* ---- root type: respect the user's browser font size ---- */
+/* was `html { font-size: 15px }`, which overrides an accessibility preference */
+html { font-size: 100%; }
+body { font-size: var(--t-base); line-height: var(--lh-body); }
+
+/* ---- icons ---- */
+.ic { flex: 0 0 auto; vertical-align: -0.18em; }
+.btn .ic { margin-right: 6px; margin-left: -2px; }
+.btn.icon-only .ic { margin: 0; }
+
+/* ---- focus: one visible, consistent ring everywhere ---- */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--r-sm);
+}
+
+/* ---- buttons: a real hierarchy ----
+   primary = the one action that commits; secondary = everything else;
+   quiet = inline affordances that must not compete with content. */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 0; padding: 7px 13px; border-radius: var(--r-md);
+  border: 1px solid var(--line-strong, #c9d3de); background: var(--surface-card);
+  font-size: var(--t-base); font-weight: 550; line-height: 1.15;
+  color: var(--ink); white-space: nowrap;
+  transition: background var(--motion-fast), border-color var(--motion-fast),
+              box-shadow var(--motion-fast);
+}
+.btn:hover { background: var(--surface); border-color: var(--ink-faint); }
+.btn:active { transform: translateY(0.5px); }
+.btn[disabled], .btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.primary {
+  background: var(--edv-navy); border-color: var(--edv-navy); color: #fff;
+  font-weight: 600; box-shadow: var(--e-1);
+}
+.btn.primary:hover { background: #16324f; border-color: #16324f; filter: none; }
+.btn.accent { background: var(--edv-orange); border-color: var(--edv-orange); color: #22160c; font-weight: 650; }
+.btn.accent:hover { background: #d76a15; border-color: #d76a15; }
+.btn.quiet { background: transparent; border-color: transparent; color: var(--ink-soft); }
+.btn.quiet:hover { background: var(--surface); border-color: var(--line); color: var(--ink); }
+.btn.small { padding: 4px 9px; font-size: var(--t-sm); }
+.btn.icon-only { padding: 6px; }
+
+/* ---- page header: one rhythm for every screen ---- */
+.page-head {
+  display: flex; align-items: baseline; gap: var(--s-3);
+  flex-wrap: wrap; margin-bottom: var(--s-5);
+  padding-bottom: var(--s-3); border-bottom: 1px solid var(--line);
+}
+.page-head h1 {
+  font-size: var(--t-xl); font-weight: 700; letter-spacing: -.018em;
+  line-height: var(--lh-tight); margin: 0;
+}
+.page-head .muted { font-size: var(--t-sm); }
+
+/* ---- panels ---- */
+.panel {
+  background: var(--surface-card); border: 1px solid var(--line);
+  border-radius: var(--r-lg); box-shadow: var(--e-1); overflow: hidden;
+}
+.panel > h3 {
+  margin: 0; padding: var(--s-3) var(--s-4);
+  font-size: var(--t-xs); font-weight: 700; letter-spacing: var(--tracking-caps);
+  text-transform: uppercase; color: var(--ink-faint);
+  border-bottom: 1px solid var(--line); background: var(--surface);
+  display: flex; align-items: center; gap: var(--s-2);
+}
+.panel > .panel-body { padding: var(--s-4); }
+
+/* ---- data tables: the product is mostly tables, so they earn real care ---- */
+.dtable, .ms-list, .cap-table, .led-table {
+  width: 100%; border-collapse: collapse; font-size: var(--t-sm);
+}
+.dtable th, .ms-list th, .cap-table th, .led-table th {
+  text-align: left; padding: var(--s-2) var(--s-3);
+  font-size: var(--t-xs); font-weight: 700; letter-spacing: var(--tracking-caps);
+  text-transform: uppercase; color: var(--ink-faint);
+  border-bottom: 1px solid var(--line-strong, #c9d3de); white-space: nowrap;
+  background: var(--surface);
+}
+.dtable td, .ms-list td, .cap-table td, .led-table td {
+  padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.dtable tbody tr:hover, .ms-list tbody tr:hover { background: var(--surface); }
+/* digits in a column must line up — this is why figures looked ragged */
+.num, .dtable .num, .led-table .num, .cap-table .num,
+td:has(> .num), .tabular { font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ---- utility classes: these exist to delete inline styles ---- */
+.stack { display: flex; flex-direction: column; }
+.row   { display: flex; align-items: center; }
+.wrap  { flex-wrap: wrap; }
+.between { justify-content: space-between; }
+.push  { margin-left: auto; }
+.g-1 { gap: var(--s-1); } .g-2 { gap: var(--s-2); } .g-3 { gap: var(--s-3); }
+.g-4 { gap: var(--s-4); } .g-5 { gap: var(--s-5); }
+.mt-2 { margin-top: var(--s-2); } .mt-3 { margin-top: var(--s-3); }
+.mt-4 { margin-top: var(--s-4); } .mt-5 { margin-top: var(--s-5); }
+.mb-2 { margin-bottom: var(--s-2); } .mb-3 { margin-bottom: var(--s-3); }
+.mb-4 { margin-bottom: var(--s-4); }
+.t-xs { font-size: var(--t-xs); } .t-sm { font-size: var(--t-sm); }
+.t-md { font-size: var(--t-md); }
+.eyebrow-label {
+  font-size: var(--t-xs); font-weight: 700; letter-spacing: var(--tracking-caps);
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.scroll-x { overflow-x: auto; }
+
+/* ---- empty states: a sentence and a way forward, not a shrug ---- */
+.empty {
+  display: flex; flex-direction: column; align-items: center; gap: var(--s-2);
+  padding: var(--s-10) var(--s-4); text-align: center; color: var(--ink-soft);
+}
+.empty .ic { color: var(--ink-faint); opacity: .55; }
+.empty b { color: var(--ink); font-weight: 600; font-size: var(--t-base); }
+.empty span { font-size: var(--t-sm); max-width: 46ch; }
+
+/* ---- sidebar: grouped, with the brand given room ---- */
+.sidenav .brand { padding: var(--s-5) var(--s-5) var(--s-4); }
+.brand .logo { font-size: var(--t-lg); letter-spacing: .04em; }
+.brand .org {
+  font-size: var(--t-xs); line-height: 1.35; margin-top: 3px;
+  letter-spacing: .04em; color: rgba(255,255,255,.62);
+}
+.sidenav nav { display: flex; flex-direction: column; }
+.sidenav nav a {
+  display: flex; align-items: center; gap: 11px;
+  padding: 8px var(--s-5); font-size: var(--t-base); font-weight: 500;
+  border-left: 2px solid transparent; transition: background var(--motion-fast);
+}
+.sidenav nav a .ic { opacity: .72; }
+.sidenav nav a:hover .ic { opacity: 1; }
+.sidenav nav a.active { border-left-color: var(--edv-orange); font-weight: 650; }
+.sidenav nav a.active .ic { opacity: 1; color: var(--accent-on-navy); }
+.nav-group {
+  padding: var(--s-4) var(--s-5) var(--s-1); font-size: .64rem; font-weight: 700;
+  letter-spacing: .13em; text-transform: uppercase;
+  /* #c3ccd6 on the navy sidebar clears WCAG AA (verified by npm run a11y);
+     the first attempt used rgba(255,255,255,.38) and failed at 4 nodes. */
+  color: #c3ccd6;
+}
+
+/* ---- chips: one size, one shape ---- */
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: var(--r-full);
+  font-size: var(--t-xs); font-weight: 600; line-height: 1.5;
+  border: 1px solid transparent; white-space: nowrap;
+}
+
+/* ---- topbar search ---- */
+.searchbox input { border-radius: var(--r-full); padding-left: 34px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn, .sidenav nav a { transition: none; }
+}
+
+/* search field: icon sits inside the input, not as a text prefix */
+.search.searchbox { position: relative; display: flex; align-items: center; }
+.search.searchbox .search-ic {
+  position: absolute; left: 12px; color: var(--ink-faint); pointer-events: none;
+}
+
+/* gate checklist marks — shape carries the state, not just colour */
+.gate-met { color: var(--rag-green-text); display: inline-flex; vertical-align: -2px; }
+.gate-open {
+  display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+  border: 1.6px solid var(--rag-amber-text); vertical-align: -1px;
+}
+
+/* inline roadblock flag sits with its text */
+.warn .ic { vertical-align: -2px; margin-right: 3px; }
+.bell { display: inline-flex; align-items: center; color: var(--ink-soft); }
+.bell:hover { color: var(--ink); }
+
+/* ---- sidebar layout: nav scrolls, identity block stays reachable ----
+   Grouping the nav made the column taller than a short viewport, which pushed
+   the sign-out and language controls below the fold. The nav is now the only
+   scrolling region; brand and footer are pinned. */
+.sidenav { padding: 0; overflow: hidden; }
+.sidenav .brand { flex: 0 0 auto; margin-bottom: 0; }
+.sidenav nav {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--s-2) 0;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.22) transparent;
+}
+.sidenav nav::-webkit-scrollbar { width: 6px; }
+.sidenav nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.22); border-radius: 3px; }
+.sidenav .mock-note {
+  flex: 0 0 auto; margin-top: 0; padding: var(--s-3) var(--s-5);
+  background: rgba(0,0,0,.16);
+}

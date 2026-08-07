@@ -2,6 +2,7 @@
 import { api, state } from "../lib/api.js";
 import { esc, optionList } from "../lib/ui.js";
 import { ensureChart, ensureXlsx } from "../lib/vendor.js";
+import { icon } from "../lib/icons.js";
 
 function tokens() {
   const css = getComputedStyle(document.documentElement);
@@ -40,15 +41,15 @@ export async function renderReports(container) {
     </div>
     <div class="report-grid">
       <div class="report-card"><h3>RAG trend (weekly snapshots)
-        <button class="btn small xlsx-btn" data-x="trend">⬇ XLSX</button></h3><canvas id="c-trend"></canvas></div>
+        <button class="btn small xlsx-btn" data-x="trend">${icon("download")}XLSX</button></h3><canvas id="c-trend"></canvas></div>
       <div class="report-card"><h3>Division workload (led / engaged)
-        <button class="btn small xlsx-btn" data-x="workload">⬇ XLSX</button></h3><canvas id="c-workload"></canvas></div>
+        <button class="btn small xlsx-btn" data-x="workload">${icon("download")}XLSX</button></h3><canvas id="c-workload"></canvas></div>
       <div class="report-card"><h3>Roadblock aging (open, by severity)
-        <button class="btn small xlsx-btn" data-x="aging">⬇ XLSX</button></h3><canvas id="c-aging"></canvas></div>
+        <button class="btn small xlsx-btn" data-x="aging">${icon("download")}XLSX</button></h3><canvas id="c-aging"></canvas></div>
       <div class="report-card"><h3>Action resolution (last 6 months)
-        <button class="btn small xlsx-btn" data-x="actions">⬇ XLSX</button></h3><canvas id="c-actions"></canvas></div>
+        <button class="btn small xlsx-btn" data-x="actions">${icon("download")}XLSX</button></h3><canvas id="c-actions"></canvas></div>
       <div class="report-card" style="grid-column:1/-1"><h3>Per-site breakdown
-        <button class="btn small xlsx-btn" data-x="sites">⬇ XLSX</button></h3>
+        <button class="btn small xlsx-btn" data-x="sites">${icon("download")}XLSX</button></h3>
         <table class="dtable" id="site-table"></table></div>
     </div>`;
 

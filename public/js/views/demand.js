@@ -4,6 +4,7 @@
 // can actually use them (the server enforces regardless).
 import { api, state } from "../lib/api.js";
 import { esc, fmtDate, modal, toast, showError, optionList, emptyState } from "../lib/ui.js";
+import { icon } from "../lib/icons.js";
 
 const MODELS = [["wsjf", "WSJF"], ["rice", "RICE"], ["weighted", "Weighted"], ["cd3", "Cost of delay"]];
 let model = "wsjf";
@@ -27,7 +28,7 @@ export async function renderDemand(container) {
   container.innerHTML = `
     <div class="page-head"><h1>Demand</h1>
       <span class="sub">Every idea scored, ranked and formally decided before it becomes a project</span>
-      ${canRaise ? '<button class="btn navy" id="new-demand" style="margin-left:auto">＋ New idea</button>' : ""}
+      ${canRaise ? `<button class="btn navy" id="new-demand" style="margin-left:auto">${icon("plus")}New idea</button>` : ""}
     </div>
 
     <div class="filterbar">

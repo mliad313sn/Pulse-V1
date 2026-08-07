@@ -9,6 +9,7 @@ import { renderMyActions } from "./views/myActions.js";
 import { renderReports } from "./views/reports.js";
 import { renderCapacity } from "./views/capacity.js";
 import { renderLedger } from "./views/ledger.js";
+import { icon } from "./lib/icons.js";
 import { renderAdmin } from "./views/admin.js";
 import { renderWarRoom } from "./views/warRoom.js";
 import { renderExecutive } from "./views/executive.js";
@@ -102,27 +103,36 @@ let notifTimer = null;
 
 function shell(active, contentNode) {
   const u = state.user;
+  // Grouped by what a person is doing, not by module name — the flat list of
+  // eleven items gave no clue which screens belonged together.
   const nav = [
-    ["portfolio", `▦ ${t("nav.portfolio")}`, "#/portfolio"],
-    ["portfolios", `▤ ${t("nav.portfolios")}`, "#/portfolios"],
-    ["demand", "◇ Demand", "#/demand"],
-    ["meetings", `▶ ${t("nav.meetings")}`, "#/meetings"],
-    ["sites", `◎ ${t("nav.sites")}`, "#/sites"],
-    ["my", `☑ ${t("nav.my")}`, "#/my"],
-    ["warroom", `⚑ ${t("nav.warroom")}`, "#/warroom"],
-    ["capacity", "◷ Capacity", "#/capacity"],
-    ["ledger", "⧗ Headroom", "#/ledger"],
-    ["exec", `◆ ${t("nav.exec")}`, "#/exec"],
-    ["reports", `📊 ${t("nav.reports")}`, "#/reports"],
+    { group: t("nav.groupDeliver") },
+    ["portfolio", t("nav.portfolio"), "#/portfolio", "grid"],
+    ["portfolios", t("nav.portfolios"), "#/portfolios", "layers"],
+    ["demand", "Demand", "#/demand", "lightbulb"],
+    ["my", t("nav.my"), "#/my", "checkSquare"],
+    { group: t("nav.groupRun") },
+    ["meetings", t("nav.meetings"), "#/meetings", "presentation"],
+    ["warroom", t("nav.warroom"), "#/warroom", "flag"],
+    ["sites", t("nav.sites"), "#/sites", "pin"],
+    { group: t("nav.groupPlan") },
+    ["capacity", "Capacity", "#/capacity", "clock"],
+    ["ledger", "Headroom", "#/ledger", "gauge"],
+    { group: t("nav.groupDecide") },
+    ["exec", t("nav.exec"), "#/exec", "diamond"],
+    ["reports", t("nav.reports"), "#/reports", "chart"],
   ];
-  if (u.role === "ADMIN") nav.push(["admin", `⚙ ${t("nav.admin")}`, "#/admin"]);
+  if (u.role === "ADMIN") nav.push(["admin", t("nav.admin"), "#/admin", "settings"]);
   app.innerHTML = "";
   const root = el(`<div class="shell">
     <aside class="sidenav">
       <div class="brand"><div class="logo">PULSE<span>.</span></div>
         <div class="org">ENDEAVOUR MINING — GROUP IT</div></div>
-      <nav>${nav.map(([k, label, href]) =>
-        `<a class="${k === active ? "active" : ""}" href="${href}">${label}</a>`).join("")}</nav>
+      <nav>${nav.map((item) => item.group
+        ? `<div class="nav-group">${esc(item.group)}</div>`
+        : `<a class="${item[0] === active ? "active" : ""}" href="${item[2]}"${
+            item[0] === active ? ' aria-current="page"' : ""}>${icon(item[3], { size: 17 })}<span>${esc(item[1])}</span></a>`
+      ).join("")}</nav>
       <div class="mock-note">${esc(u.name)} · ${esc(u.role.replace("_", " "))}<br>
         <span class="inline-link" id="nav-pwd" role="button" tabindex="0">${t("nav.changePwd")}</span> ·
         <span class="inline-link" id="nav-logout" role="button" tabindex="0">${t("nav.signOut")}</span><br>
@@ -131,11 +141,11 @@ function shell(active, contentNode) {
     </aside>
     <div class="main">
       <div class="topbar">
-        <div class="search">🔍 <input id="global-q" type="search" placeholder="Search projects & roadblocks…"></div>
+        <div class="search searchbox">${icon("search", { size: 16, className: "search-ic" })}<input id="global-q" type="search" placeholder="Search projects, roadblocks and people…"></div>
         <div id="search-results" class="notif-drop" style="display:none;left:230px;right:auto;top:52px"></div>
         <div class="spacer"></div>
         <span id="sync-chip" class="chip div" style="display:none;cursor:pointer" title="Pulse-V1 offline sync queue"></span>
-        <button class="bell" id="bell" title="Notifications">🔔<span class="badge" id="bell-count" style="display:none"></span></button>
+        <button class="bell" id="bell" aria-label="Notifications" title="Notifications">${icon("bell", { size: 19 })}<span class="badge" id="bell-count" style="display:none"></span></button>
         <div id="notif-drop" class="notif-drop" style="display:none"></div>
         <span id="topbar-actions"></span>
       </div>
