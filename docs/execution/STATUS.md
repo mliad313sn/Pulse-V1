@@ -79,6 +79,39 @@ format and assert confidential titles/codes and finance figures are ABSENT
 for unauthorized users, and site-restricted users export only their site.
 Deps: exceljs+pdfkit+pptxgenjs added (uuid overridden to ^11 — audit stays 0).
 
+## SPM TRANSFORMATION — COMPLETE (2026-08-07)
+
+All 13 phases (P0–P12) have their core delivered, tested and pushed. Suite
+grew 122 → **214 green**; `npm audit` 0 vulnerabilities; migrations apply
+cleanly from an empty database (verified); backup + restore drill actually
+executed.
+
+**Real defects found and fixed along the way** (each one was live behaviour,
+not a hypothetical):
+1. CPM read `dependency_type` but the DB column is `dep_type` — every live
+   plan was computed FS-only despite the kernel supporting all four types.
+2. Offline idempotency wrote its ledger row in `res.on("finish")` — a
+   reconnect replay burst could apply the same operation several times. The
+   op id is now reserved atomically before the handler runs.
+3. Calendar exceptions were silently ignored: pg returns DATE as a JS Date and
+   the lookup key was being built as "Mon Jun 01" instead of an ISO date.
+4. A mid-window holiday shrank a task's work content instead of pushing the
+   chain out; work is now measured against the working week, availability
+   against the full calendar.
+5. `external_links` unique constraints counted soft-deleted rows, so a record
+   could never be re-linked after being unlinked (migration 029).
+6. Task create advertised a `status` field and silently dropped it.
+7. A mis-nested template literal shipped in the frontend because `node --check`
+   parses as CommonJS; `npm run check:frontend` now parses as ES modules and
+   gates the suite.
+8. Money was currency-blind, the production session secret could fall back to a
+   dev default, and cross-user op-id collisions were swallowed (all P0).
+
+**Documentation regenerated from reality, not memory:** README rewritten to
+match what exists, `docs/DATA_DICTIONARY.md` generated from the live schema
+(62 tables, CI fails if it drifts), `docs/RUNBOOK_OPERATIONS.md` written from
+an executed restore drill, OpenAPI generated from the running router.
+
 ## NEW GOAL (2026-08-07): SPM transformation — compete with Planview/Planisware/ServiceNow SPM
 A second /goal directive extends the completed master plan into a Strategic
 Portfolio Management platform. Phases (dependency order; each = tested slices):

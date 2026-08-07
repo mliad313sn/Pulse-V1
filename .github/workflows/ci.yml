@@ -30,8 +30,15 @@ jobs:
       - run: npm ci
       - name: Migrations apply from empty database
         run: DATABASE_URL=postgres://pulse:pulse@localhost:5432/pulse_test node src/db/migrate.js
+      - name: Frontend modules parse as ES modules
+        run: npm run check:frontend
       - name: Full test suite
         run: npm test
+      - name: Data dictionary matches the live schema
+        run: |
+          DATABASE_URL=postgres://pulse:pulse@localhost:5432/pulse_test node scripts/generate_data_dictionary.js
+          git diff --exit-code docs/DATA_DICTIONARY.md \
+            || (echo "docs/DATA_DICTIONARY.md is stale — regenerate it after your migration" && exit 1)
       - name: Dependency audit (fails on any known vulnerability)
         run: npm audit --audit-level=low
       - name: Production fail-closed check (must refuse to boot without SESSION_SECRET)
