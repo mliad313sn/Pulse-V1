@@ -60,6 +60,9 @@ function createApp(options = {}) {
 
   app.use(csrfProtection);
 
+  // Pulse-V1 offline-sync idempotency (X-Client-Op-Id dedupe) — before all routers
+  app.use("/api/", require("./modules/sync/routes").syncIdempotency);
+
   // ===== API v1 =====
   app.use("/api/v1/auth", require("./modules/auth/routes"));
   app.use("/api/v1/projects", require("./modules/projects/routes"));
@@ -72,6 +75,8 @@ function createApp(options = {}) {
   app.use("/api/v1/reports", require("./modules/reports/routes"));
   app.use("/api/v1/audit", require("./modules/audit/routes"));
   app.use("/api/v1/rag", require("./modules/rag/routes"));
+  app.use("/api/v1", require("./modules/deliverables/routes"));
+  app.use("/api/v1/sync", require("./modules/sync/routes").router);
 
   // Reference data for pickers (any authenticated user)
   app.get("/api/v1/meta", requireAuth, async (req, res, next) => {

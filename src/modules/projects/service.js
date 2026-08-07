@@ -4,6 +4,7 @@ const audit = require("../../middleware/audit");
 const { badRequest, conflict, notFound, forbidden } = require("../../middleware/errors");
 const rag = require("../rag/service");
 const notifications = require("../notifications/service");
+const gates = require("./gates");
 
 // ===== code generation: PRJ-{YYYY}-{NNN} from sequences row locked FOR UPDATE =====
 async function nextProjectCode(client) {
@@ -118,6 +119,22 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
     await assertValidPM({ query }, patch.project_manager_id);
   }
 
+  // ITPM360 stage gate: changing stage must follow the state machine (no skipping)
+  if (after.stage !== project.stage) {
+    const [msCount, goLive] = await Promise.all([
+      query(`SELECT count(*)::int AS n FROM milestones WHERE project_id = $1 AND deleted_at IS NULL`, [project.id]),
+      query(`SELECT count(*)::int AS n FROM milestones WHERE project_id = $1 AND deleted_at IS NULL
+              AND type = 'GO_LIVE' AND status = 'DONE'`, [project.id]),
+    ]);
+    const verdict = gates.checkTransition(project.stage, after.stage, after,
+      { milestoneCount: msCount.rows[0].n, goLiveDone: goLive.rows[0].n > 0 }, actor);
+    if (!verdict.ok) {
+      // steering-committee gate failure is an authorization problem, not a data problem
+      const scUnmet = (verdict.unmet || []).some((r) => r.label.includes("Steering Committee"));
+      throw scUnmet ? forbidden(verdict.error) : badRequest(verdict.error);
+    }
+  }
+
   return withTransaction(async (client) => {
     const res = await client.query(
       `UPDATE projects SET
@@ -144,6 +161,13 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
       entity: "project", entityId: project.id, userId: actor.id,
       changes: audit.diff(project, after, PROJECT_FIELDS),
     });
+    if (after.stage !== project.stage) {
+      await client.query(
+        `INSERT INTO stage_transitions (project_id, from_stage, to_stage, approved_by, note)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [project.id, project.stage, after.stage, actor.id, patch.stage_note || null]
+      );
+    }
     if (
       patch.project_manager_id !== undefined &&
       patch.project_manager_id !== project.project_manager_id &&
@@ -211,9 +235,19 @@ async function softDeleteProject(actor, projectId) {
 // Confidentiality visibility clause for list queries.
 // Contributors/Viewers never see confidential projects — except a Contributor who IS the PM.
 function confidentialityWhere(user, params) {
-  if (user.role === "ADMIN" || user.role === "DIVISION_LEAD") return "TRUE";
-  params.push(user.id);
-  return `(p.confidential = false OR p.project_manager_id = $${params.length})`;
+  const clauses = [];
+  if (!(user.role === "ADMIN" || user.role === "DIVISION_LEAD")) {
+    params.push(user.id);
+    clauses.push(`(p.confidential = false OR p.project_manager_id = $${params.length})`);
+  }
+  // OpsPm360 site isolation: no enterprise access -> only projects touching own site (or own PM projects)
+  if (user.enterprise_access === false) {
+    params.push(user.site_id || -1, user.id);
+    clauses.push(`(EXISTS (SELECT 1 FROM project_sites psi WHERE psi.project_id = p.id
+                    AND psi.deleted_at IS NULL AND psi.site_id = $${params.length - 1})
+                  OR p.project_manager_id = $${params.length})`);
+  }
+  return clauses.length ? clauses.join(" AND ") : "TRUE";
 }
 
 // ===== portfolio list with filters (plan §4.1); card data in one query =====

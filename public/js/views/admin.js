@@ -47,7 +47,9 @@ export async function renderAdmin(container) {
         `<option ${u.role === r ? "selected" : ""}>${r}</option>`).join("")}</select></div>
       <div class="field"><label>Division</label><select name="division">${optionList(m.divisions, "id", (d) => d.code, u.division_id ?? "", "—")}</select></div>
       <div class="field"><label>Site</label><select name="site">${optionList(m.sites, "id", (s) => s.code, u.site_id ?? "", "—")}</select></div></div>
-    ${u.id ? `<div class="field"><label><input type="checkbox" name="active" ${u.active ? "checked" : ""}> Active</label></div>`
+    ${u.id ? `<div class="field"><label><input type="checkbox" name="active" ${u.active ? "checked" : ""}> Active</label>
+      <label><input type="checkbox" name="steering" ${u.is_steering_committee ? "checked" : ""}> Steering Committee (approves PLANNING → EXECUTION gates)</label>
+      <label><input type="checkbox" name="enterprise" ${u.enterprise_access !== false ? "checked" : ""}> Enterprise access (unchecked = sees own site only)</label></div>`
       : `<div class="field"><label>Initial password (min 10 chars — user must change at first login)</label><input name="password" value="Endeavour-${new Date().getUTCFullYear()}!"></div>`}`;
 
   container.querySelector("#new-user").onclick = () => modal({
@@ -77,6 +79,8 @@ export async function renderAdmin(container) {
           divisionId: v("division") ? Number(v("division")) : null,
           siteId: v("site") ? Number(v("site")) : null,
           active: box.querySelector("[name=active]").checked,
+          isSteeringCommittee: box.querySelector("[name=steering]").checked,
+          enterpriseAccess: box.querySelector("[name=enterprise]").checked,
         });
         toast("User updated");
         reload();

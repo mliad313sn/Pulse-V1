@@ -8,6 +8,8 @@ import { renderSiteLens } from "./views/siteLens.js";
 import { renderMyActions } from "./views/myActions.js";
 import { renderReports } from "./views/reports.js";
 import { renderAdmin } from "./views/admin.js";
+import { renderWarRoom } from "./views/warRoom.js";
+import { flush, countQueued, isBlocked, retryAfterReview, discardHead } from "./lib/syncQueue.js";
 
 const app = document.getElementById("app");
 
@@ -94,6 +96,7 @@ function shell(active, contentNode) {
     ["meetings", "▶ Meetings", "#/meetings"],
     ["sites", "◎ Sites", "#/sites"],
     ["my", "☑ My Actions", "#/my"],
+    ["warroom", "⚑ War Room", "#/warroom"],
     ["reports", "📊 Reports", "#/reports"],
   ];
   if (u.role === "ADMIN") nav.push(["admin", "⚙ Admin", "#/admin"]);
@@ -113,6 +116,7 @@ function shell(active, contentNode) {
         <div class="search">🔍 <input id="global-q" type="search" placeholder="Search projects & roadblocks…"></div>
         <div id="search-results" class="notif-drop" style="display:none;left:230px;right:auto;top:52px"></div>
         <div class="spacer"></div>
+        <span id="sync-chip" class="chip div" style="display:none;cursor:pointer" title="Pulse-V1 offline sync queue"></span>
         <button class="bell" id="bell" title="Notifications">🔔<span class="badge" id="bell-count" style="display:none"></span></button>
         <div id="notif-drop" class="notif-drop" style="display:none"></div>
         <span id="topbar-actions"></span>
@@ -176,6 +180,38 @@ function shell(active, contentNode) {
   clearInterval(notifTimer);
   notifTimer = setInterval(refreshBell, 60000);
 
+  // Pulse-V1 sync queue status chip
+  const chip = root.querySelector("#sync-chip");
+  async function refreshSyncChip(detail) {
+    const count = detail ? detail.count : await countQueued();
+    const blocked = detail ? detail.blocked : !!isBlocked();
+    if (blocked) {
+      const b = isBlocked() || {};
+      chip.style.display = "";
+      chip.style.background = "var(--rag-red)";
+      chip.style.color = "#fff";
+      chip.textContent = `⚠ SYNC HALTED (${count})`;
+      chip.title = `Halted on: ${b.summary || "?"} — ${b.status || ""} ${b.error || ""}. Admins alerted. Click to retry or discard the failing change.`;
+      chip.onclick = async () => {
+        const action = prompt(`Sync is halted on "${b.summary}" (${b.status} ${b.error}).\nType RETRY to replay after admin review, or DISCARD to drop the failing change:`);
+        if (action === "RETRY") await retryAfterReview();
+        else if (action === "DISCARD") await discardHead();
+      };
+    } else if (count > 0) {
+      chip.style.display = "";
+      chip.style.background = "";
+      chip.style.color = "";
+      chip.textContent = navigator.onLine ? `⇅ syncing ${count}…` : `⇅ ${count} queued offline`;
+      chip.title = "Changes waiting in the offline sync queue (FIFO)";
+      chip.onclick = () => flush();
+    } else {
+      chip.style.display = "none";
+    }
+  }
+  window.addEventListener("pulse-sync-change", (e) => refreshSyncChip(e.detail));
+  refreshSyncChip();
+  flush(); // replay anything queued from a previous offline session
+
   // global search
   const q = root.querySelector("#global-q");
   const results = root.querySelector("#search-results");
@@ -217,6 +253,7 @@ const routes = [
   [/^#\/meetings/, "meetings", renderMeetings],
   [/^#\/sites(?:\/(\w+))?/, "sites", renderSiteLens],
   [/^#\/my/, "my", renderMyActions],
+  [/^#\/warroom/, "warroom", renderWarRoom],
   [/^#\/reports/, "reports", renderReports],
   [/^#\/admin/, "admin", renderAdmin],
 ];

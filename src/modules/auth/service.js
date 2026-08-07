@@ -97,14 +97,18 @@ async function updateUser(actor, id, patch) {
   const { rows } = await query(`SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL`, [id]);
   const before = rows[0];
   if (!before) throw badRequest("User not found");
-  const fields = ["name", "email", "role", "division_id", "site_id", "active"];
+  const fields = ["name", "email", "role", "division_id", "site_id", "active",
+    "is_steering_committee", "enterprise_access"];
   const after = { ...before };
   for (const f of fields) if (patch[f] !== undefined) after[f] = patch[f];
   return withTransaction(async (client) => {
     const res = await client.query(
-      `UPDATE users SET name=$2, email=$3, role=$4, division_id=$5, site_id=$6, active=$7, updated_at=now()
-        WHERE id = $1 RETURNING id, name, email, role, division_id, site_id, active, must_change_password`,
-      [id, after.name, after.email, after.role, after.division_id, after.site_id, after.active]
+      `UPDATE users SET name=$2, email=$3, role=$4, division_id=$5, site_id=$6, active=$7,
+              is_steering_committee=$8, enterprise_access=$9, updated_at=now()
+        WHERE id = $1 RETURNING id, name, email, role, division_id, site_id, active,
+              must_change_password, is_steering_committee, enterprise_access`,
+      [id, after.name, after.email, after.role, after.division_id, after.site_id, after.active,
+       after.is_steering_committee, after.enterprise_access]
     );
     await audit.record(client, {
       entity: "user", entityId: id, userId: actor.id,
@@ -143,7 +147,8 @@ async function softDeleteUser(actor, id) {
 async function listUsers({ limit = 50, offset = 0 } = {}) {
   const { rows } = await query(
     `SELECT u.id, u.name, u.email, u.role, u.division_id, d.code AS division_code,
-            u.site_id, s.code AS site_code, u.active, u.must_change_password, u.locked_until
+            u.site_id, s.code AS site_code, u.active, u.must_change_password, u.locked_until,
+            u.is_steering_committee, u.enterprise_access
        FROM users u
        LEFT JOIN divisions d ON d.id = u.division_id
        LEFT JOIN sites s ON s.id = u.site_id

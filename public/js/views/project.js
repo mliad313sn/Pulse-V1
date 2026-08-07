@@ -49,6 +49,7 @@ export async function renderProject(container, projectId) {
           <button data-tab="roadblocks">Roadblocks ${d.roadblocks.filter((r) => r.status !== "RESOLVED").length ? `<span class="badge-count">${d.roadblocks.filter((r) => r.status !== "RESOLVED").length}</span>` : ""}</button>
           <button data-tab="actions">Actions</button>
           <button data-tab="updates">Updates &amp; Decisions</button>
+          <button data-tab="deliverables">Deliverables</button>
         </div>
         <div id="tab-content"></div>
       </div>
@@ -83,6 +84,7 @@ export async function renderProject(container, projectId) {
     roadblocks: () => roadblocksTab(d, canFull, canPartial, reload),
     actions: () => actionsTab(d, canPartial, reload),
     updates: () => updatesTab(d, canFull, canPartial, reload),
+    deliverables: () => deliverablesTab(d, canFull, reload),
   };
   container.querySelectorAll(".tabs button").forEach((b) => {
     b.classList.toggle("active", b.dataset.tab === activeTab);
@@ -439,6 +441,82 @@ function updatesTab(d, canFull, canPartial, reload) {
       toast("Decision logged");
       reload();
     } catch (err) { showError(err); }
+  });
+  return wrap;
+}
+
+// ===== Deliverables + RACI tab (OpsPm360) =====
+function deliverablesTab(d, canFull, reload) {
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `<div class="panel"><div class="panel-body muted">Loading deliverables…</div></div>`;
+  const RACI_LABEL = { R: "Responsible", A: "Accountable", C: "Consulted", I: "Informed" };
+
+  api.get(`/api/v1/projects/${d.project.id}/deliverables`).then(({ deliverables }) => {
+    wrap.innerHTML = `<div class="panel">
+      ${canFull ? `<div class="quickadd">
+        <input type="text" id="dl-title" placeholder="Add deliverable: title… (Enter to save)">
+        <input type="date" id="dl-due"></div>` : ""}
+      ${deliverables.length ? `<table class="ms-list">
+        <tr><th>Deliverable</th><th>Due</th><th>Status</th><th>RACI</th>${canFull ? "<th></th>" : ""}</tr>
+        ${deliverables.map((x) => `<tr>
+          <td><b>${esc(x.title)}</b>${x.description ? `<br><span class="muted">${esc(x.description)}</span>` : ""}</td>
+          <td>${fmtDate(x.due_date)}</td>
+          <td><select data-dstatus="${x.id}" data-ua="${x.updated_at}" ${canFull || (x.raci || []).some((r) => r.user_id === state.user.id && "RA".includes(r.role)) ? "" : "disabled"}>
+            ${["PENDING", "IN_PROGRESS", "DELIVERED"].map((s) => `<option ${x.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></td>
+          <td>${(x.raci || []).map((r) =>
+            `<span class="chip div" title="${RACI_LABEL[r.role]}"><b>${r.role}</b> ${esc(r.name)}</span>`).join(" ") || '<span class="muted">unassigned</span>'}</td>
+          ${canFull ? `<td><button class="btn small" data-raci="${x.id}">RACI…</button></td>` : ""}
+        </tr>`).join("")}</table>`
+        : emptyState("▤", "No deliverables defined yet.", canFull ? "Add one above, then tag people R/A/C/I." : "")}
+    </div>`;
+
+    const add = wrap.querySelector("#dl-title");
+    if (add) add.addEventListener("keydown", async (e) => {
+      if (e.key !== "Enter" || !add.value.trim()) return;
+      try {
+        await api.post(`/api/v1/projects/${d.project.id}/deliverables`, {
+          title: add.value.trim(), due_date: wrap.querySelector("#dl-due").value || null,
+        });
+        toast("Deliverable added");
+        reload();
+      } catch (err) { showError(err); }
+    });
+    wrap.querySelectorAll("[data-dstatus]").forEach((sel) => sel.onchange = async () => {
+      try {
+        await api.put(`/api/v1/deliverables/${sel.dataset.dstatus}`, { status: sel.value, updated_at: sel.dataset.ua });
+        toast("Deliverable updated");
+        reload();
+      } catch (err) { showError(err); if (err.status === 409) reload(); }
+    });
+    wrap.querySelectorAll("[data-raci]").forEach((b) => b.onclick = () => {
+      const del = deliverables.find((x) => x.id === Number(b.dataset.raci));
+      const users = state.meta.users;
+      const existing = del.raci || [];
+      const row = (i) => {
+        const cur = existing[i] || {};
+        return `<div class="frow">
+          <div class="field"><select name="u${i}"><option value="">— nobody —</option>
+            ${users.map((u) => `<option value="${u.id}" ${cur.user_id === u.id ? "selected" : ""}>${esc(u.name)}</option>`).join("")}</select></div>
+          <div class="field" style="max-width:140px"><select name="r${i}">
+            ${["R", "A", "C", "I"].map((r) => `<option ${cur.role === r ? "selected" : ""}>${r}</option>`).join("")}</select></div>
+        </div>`;
+      };
+      modal({
+        title: `RACI — ${del.title}`,
+        body: `<p class="muted" style="margin-bottom:10px">R = Responsible · A = Accountable · C = Consulted · I = Informed</p>
+          ${[0, 1, 2, 3, 4, 5].map(row).join("")}`,
+        onSave: async (box) => {
+          const assignments = [];
+          for (let i = 0; i < 6; i++) {
+            const uid = box.querySelector(`[name=u${i}]`).value;
+            if (uid) assignments.push({ user_id: Number(uid), raci_role: box.querySelector(`[name=r${i}]`).value });
+          }
+          await api.put(`/api/v1/deliverables/${del.id}/raci`, { assignments });
+          toast("RACI matrix saved");
+          reload();
+        },
+      });
+    });
   });
   return wrap;
 }

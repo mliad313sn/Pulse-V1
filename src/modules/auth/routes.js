@@ -34,6 +34,8 @@ router.post("/login", loginLimiter, async (req, res, next) => {
         id: user.id, name: user.name, email: user.email, role: user.role,
         divisionId: user.division_id, siteId: user.site_id,
         mustChangePassword: user.must_change_password,
+        isSteeringCommittee: user.is_steering_committee === true,
+        enterpriseAccess: user.enterprise_access !== false,
       },
       csrfToken,
     });
@@ -56,6 +58,8 @@ router.get("/me", requireAuth, (req, res) => {
       id: req.user.id, name: req.user.name, email: req.user.email, role: req.user.role,
       divisionId: req.user.division_id, siteId: req.user.site_id,
       mustChangePassword: req.user.must_change_password,
+      isSteeringCommittee: req.user.is_steering_committee === true,
+      enterpriseAccess: req.user.enterprise_access !== false,
     },
     csrfToken: req.session.csrfToken,
   });
@@ -105,6 +109,8 @@ router.put("/users/:id", requireAuth, requireRole("ADMIN"), async (req, res, nex
       name: patch.name, email: patch.email, role: patch.role,
       division_id: patch.divisionId, site_id: patch.siteId,
       active: req.body.active,
+      is_steering_committee: typeof req.body.isSteeringCommittee === "boolean" ? req.body.isSteeringCommittee : undefined,
+      enterprise_access: typeof req.body.enterpriseAccess === "boolean" ? req.body.enterpriseAccess : undefined,
     });
     res.json({ user });
   } catch (err) { next(err); }

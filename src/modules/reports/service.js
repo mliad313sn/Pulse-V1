@@ -10,6 +10,12 @@ function scopeClauses(user, siteCode, params) {
     params.push(user.id);
     clauses.push(`(p.confidential = false OR p.project_manager_id = $${params.length})`);
   }
+  if (user.enterprise_access === false) {
+    params.push(user.site_id || -1, user.id);
+    clauses.push(`(EXISTS (SELECT 1 FROM project_sites psi WHERE psi.project_id = p.id
+                    AND psi.deleted_at IS NULL AND psi.site_id = $${params.length - 1})
+                  OR p.project_manager_id = $${params.length})`);
+  }
   if (siteCode) {
     params.push(siteCode);
     clauses.push(`EXISTS (SELECT 1 FROM project_sites ps JOIN sites s ON s.id = ps.site_id

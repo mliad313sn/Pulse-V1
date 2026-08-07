@@ -29,7 +29,8 @@ export function toast(msg, isError = false) {
 
 // Standard error reporter — surfaces 409s with guidance
 export function showError(err) {
-  if (err.status === 409) toast("This item changed since you loaded it — review and retry.", true);
+  if (err.queued) toast(err.message); // queued offline — informative, not an error
+  else if (err.status === 409) toast("This item changed since you loaded it — review and retry.", true);
   else toast(err.message || "Something went wrong", true);
 }
 

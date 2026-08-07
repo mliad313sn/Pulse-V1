@@ -58,7 +58,7 @@ npm start                       # http://localhost:3000
 
 ```bash
 createdb pulse_test             # dedicated test DB (DATABASE_URL_TEST)
-npm test                        # 62 tests: computeRag boundaries, permission matrix,
+npm test                        # 74 tests: computeRag boundaries, permission matrix,
                                 # lockout/CSRF/session-survival, 409 locking, 20-parallel
                                 # code uniqueness, 6-rule agendas, XSS-inert minutes,
                                 # site lens, snapshots, rate limits
@@ -75,6 +75,13 @@ createdb pulse_restore
 DATABASE_URL=postgres://user:pass@host:5432/pulse_restore npm run restore -- /backups/pulse_<stamp>.dump
 # point the app at pulse_restore and start — sessions, logins and data work immediately
 ```
+
+## Ecosystem layer (Pulse-V1 sync · ITPM360 gates · OpsPm360 War Room)
+
+- **Offline-first**: changes made while disconnected queue in the browser (IndexedDB, FIFO) and sync automatically on reconnect; a hard server error halts the queue and alerts Admins — no silent conflict resolution.
+- **Stage-gates**: projects move strictly IDEA→DESIGN→BUILD→DEPLOY→RUN→CLOSED (PROPOSAL/PLANNING/EXECUTION/CLOSURE governance labels). The PLANNING→EXECUTION gate requires a Steering Committee approver (Admin-set flag); every transition lands in an auditable ledger.
+- **War Room** (`#/warroom`): active portfolio, gate requirement checklists, RACI deliverable duties, recent approvals.
+- **Site isolation**: users without *enterprise access* see only their own site's projects everywhere (demo: `sgo.office@endeavourmining.com`).
 
 ## Repository layout
 

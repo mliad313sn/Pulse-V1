@@ -12,12 +12,31 @@ async function call(method, url, body) {
   const headers = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (state.csrf && method !== "GET") headers["X-CSRF-Token"] = state.csrf;
-  const res = await fetch(url, {
-    method,
-    headers,
-    credentials: "same-origin",
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      credentials: "same-origin",
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch (netErr) {
+    // Offline: mutating requests are queued FIFO in the Pulse-V1 sync queue and
+    // replayed when connectivity returns; reads just fail with a clear message.
+    if (method !== "GET") {
+      const { enqueueOp, isBlocked } = await import("./syncQueue.js");
+      if (!isBlocked()) {
+        await enqueueOp({ method, url, body, summary: `${method} ${url}` });
+        const e = new Error("Offline — change saved to the sync queue and will apply when connectivity returns");
+        e.status = 0;
+        e.queued = true;
+        throw e;
+      }
+    }
+    const e = new Error("Offline — cannot reach the server");
+    e.status = 0;
+    throw e;
+  }
   let data = {};
   try { data = await res.json(); } catch { /* html or empty */ }
   if (res.status === 401) {

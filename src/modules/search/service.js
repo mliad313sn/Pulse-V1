@@ -6,11 +6,18 @@ const { query } = require("../../db/pool");
 async function search(user, q) {
   const like = `%${q}%`;
   const params = [like];
-  let confidentiality = "TRUE";
+  const scope = [];
   if (user.role === "CONTRIBUTOR" || user.role === "VIEWER") {
     params.push(user.id);
-    confidentiality = `(p.confidential = false OR p.project_manager_id = $${params.length})`;
+    scope.push(`(p.confidential = false OR p.project_manager_id = $${params.length})`);
   }
+  if (user.enterprise_access === false) {
+    params.push(user.site_id || -1, user.id);
+    scope.push(`(EXISTS (SELECT 1 FROM project_sites psi WHERE psi.project_id = p.id
+                  AND psi.deleted_at IS NULL AND psi.site_id = $${params.length - 1})
+                OR p.project_manager_id = $${params.length})`);
+  }
+  const confidentiality = scope.length ? scope.join(" AND ") : "TRUE";
   const [projects, roadblocks] = await Promise.all([
     query(
       `SELECT p.id, p.code, p.title, p.stage, coalesce(p.rag_override, p.rag_computed) AS rag

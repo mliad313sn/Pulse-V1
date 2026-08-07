@@ -31,7 +31,7 @@ async function seed(force = false) {
       console.log("Database already seeded — run `npm run seed -- --force` to wipe and reseed.");
       return;
     }
-    await pool.query(`TRUNCATE audit_log, rag_history, notifications, readiness_items, status_updates,
+    await pool.query(`TRUNCATE sync_ops, raci_assignments, deliverables, stage_transitions, audit_log, rag_history, notifications, readiness_items, status_updates,
       decisions, actions, meeting_items, meeting_attendees, meetings, roadblocks, milestones,
       project_sites, project_divisions, projects, users, sequences, sites, divisions, session
       RESTART IDENTITY CASCADE`);
@@ -88,6 +88,10 @@ async function seed(force = false) {
     await mkUser("leila", "Leila Touré", "leila.toure@endeavourmining.com", "CONTRIBUTOR", "OPS", "SML", demoHash, false);
     await mkUser("marie", "Marie Kouassi", "marie.kouassi@endeavourmining.com", "CONTRIBUTOR", "DAT", "DKR", demoHash, false);
     await mkUser("viewer", "CIO Office", "cio@endeavourmining.com", "VIEWER", "GRP", null, demoHash, false);
+    // ecosystem: steering committee flags + a site-isolated demo account
+    await c.query(`UPDATE users SET is_steering_committee = true WHERE id IN ($1, $2)`, [U.admin, U.bap]);
+    await mkUser("sgoViewer", "SGO Site Office", "sgo.office@endeavourmining.com", "VIEWER", "OPS", "SGO", demoHash, false);
+    await c.query(`UPDATE users SET enterprise_access = false WHERE id = $1`, [U.sgoViewer]);
 
     // sequence
     const year = new Date().getUTCFullYear();
@@ -329,6 +333,33 @@ async function seed(force = false) {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$7)`,
       [P.lan, mtg.rows[0].id, "Approve loaner-switch pre-staging to protect the go-live window.",
        "Group IT Manager", days(-7), U.admin, daysTs(-7)]
+    );
+
+    // ecosystem demo: deliverables + RACI on the LAN project
+    const d1 = await c.query(
+      `INSERT INTO deliverables (project_id, title, due_date, status, created_by)
+       VALUES ($1,'As-built network documentation',$2,'IN_PROGRESS',$3) RETURNING id`,
+      [P.lan, days(35), U.admin]
+    );
+    const d2 = await c.query(
+      `INSERT INTO deliverables (project_id, title, due_date, status, created_by)
+       VALUES ($1,'Cutover runbook (signed off)',$2,'PENDING',$3) RETURNING id`,
+      [P.lan, days(30), U.admin]
+    );
+    const raci = [
+      [d1.rows[0].id, U.awa, "R"], [d1.rows[0].id, U.inf, "A"], [d1.rows[0].id, U.sec, "C"],
+      [d2.rows[0].id, U.inf, "R"], [d2.rows[0].id, U.awa, "A"], [d2.rows[0].id, U.ops, "I"],
+    ];
+    for (const [did, uid, role] of raci) {
+      await c.query(
+        `INSERT INTO raci_assignments (deliverable_id, user_id, raci_role, created_by) VALUES ($1,$2,$3,$4)`,
+        [did, uid, role, U.admin]
+      );
+    }
+    await c.query(
+      `INSERT INTO stage_transitions (project_id, from_stage, to_stage, approved_by, note)
+       VALUES ($1,'DESIGN','BUILD',$2,'Steering committee approval — design freeze reached')`,
+      [P.lan, U.admin]
     );
 
     // recompute RAG for all projects (stores rag_computed, signals, progress, last_activity)

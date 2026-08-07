@@ -9,7 +9,8 @@ const { unauthorized, forbidden, notFound } = require("./errors");
 async function loadSessionUser(req) {
   if (!req.session || !req.session.userId) return null;
   const { rows } = await query(
-    `SELECT id, name, email, role, division_id, site_id, active, must_change_password
+    `SELECT id, name, email, role, division_id, site_id, active, must_change_password,
+            is_steering_committee, enterprise_access
        FROM users WHERE id = $1 AND deleted_at IS NULL AND active = true`,
     [req.session.userId]
   );
@@ -71,6 +72,16 @@ async function loadProjectAccess(projectId, user) {
   project.sites = siteRes.rows.map((r) => r.site_id);
 
   const isPM = project.project_manager_id === user.id;
+
+  // OpsPm360 site isolation: a user without enterprise access sees ONLY projects
+  // touching their own site (hidden = 404, same as absent). PM assignment wins.
+  if (
+    user.enterprise_access === false &&
+    !isPM &&
+    !(user.site_id && project.sites.includes(user.site_id))
+  ) {
+    throw notFound("Project not found");
+  }
 
   // Confidential: hidden from Contributors/Viewers everywhere (§1) — except the
   // assigned PM, who must be able to run their own project.

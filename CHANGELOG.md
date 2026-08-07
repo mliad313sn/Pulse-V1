@@ -97,3 +97,52 @@ All notable changes and build decisions, phase by phase. Source of truth for req
 16. docker compose fully authored + config-validated; image pulls blocked by the
     build sandbox's egress proxy, so `docker compose up` must be smoke-run on a
     networked host (identical boot path verified natively throughout).
+
+## Ecosystem baseline — Pulse-V1 sync · ITPM360 gates · OpsPm360 RACI/War Room (2026-08-07)
+
+Additive layer per the "Baseline Ecosystem" goal — nothing in the delivered
+product changed shape; 74 tests green (62 existing + 12 new).
+
+### Pulse-V1 — offline queuing & synchronization
+- `public/js/lib/syncQueue.js` (SyncQueueManager): mutating API calls that fail
+  on a dead network are stored in IndexedDB as a sequential log and replayed
+  strictly FIFO on reconnect. A server error during replay HALTS the queue,
+  keeps the op, and alerts every Admin (SYNC_HALTED notification) — no
+  automated conflict resolution. Manual RETRY / DISCARD from the topbar chip.
+- Server: `X-Client-Op-Id` idempotency middleware + `sync_ops` ledger (a
+  replayed op applies exactly once); `POST /api/v1/sync/halt-alert`.
+- Validated in-browser: network drop → 2 ops queued → reconnect → FIFO applied
+  → server reflects final state (stage BUILD + deliverable), queue empty.
+
+### ITPM360 — stage-gate state machine
+- Pure `gates.js`: rigid linear flow over the existing lifecycle with
+  governance labels (PROPOSAL≈IDEA, PLANNING≈DESIGN, EXECUTION≈BUILD/DEPLOY/RUN,
+  CLOSURE≈CLOSED); ON_HOLD parks/resumes. Gates cannot be skipped.
+- Hard-coded prerequisites: IDEA→DESIGN needs description+sponsor+target date;
+  DESIGN→BUILD needs ≥1 milestone AND an approver flagged Steering Committee
+  (users.is_steering_committee, Admin-managed); DEPLOY→RUN needs a DONE GO_LIVE;
+  RUN→CLOSED needs actual_end_date.
+- Every transition recorded in the auditable `stage_transitions` ledger
+  (who approved, when, optional note) — shown in the War Room.
+
+### OpsPm360 — RACI, site isolation & War Room
+- `deliverables` + `raci_assignments` (R/A/C/I per user per deliverable);
+  full-access defines the matrix; a tagged R/A can progress the deliverable.
+- Site isolation: `users.enterprise_access=false` restricts EVERY read path
+  (portfolio, project access→404, search, reports, war room) to projects
+  touching the user's own site; existing users default to true (no behavior
+  change); PM assignment always wins. Admin-managed checkbox.
+- War Room view (`#/warroom`): active portfolio with governance phase, next
+  gate + live requirement checklist, deliverables progress, "my RACI duties",
+  recent gate approvals.
+
+### Decisions
+17. The new /goal conflicts in places with PULSE_MASTER_PLAN v2.1 (site
+    isolation vs read-all; new phase names). Resolved additively: master-plan
+    behavior is the default; isolation and gates are opt-in per user/flag, and
+    governance phases are labels over the existing stage enum.
+18. `updated_at` already serves as the directive's `last_modified`; sync state
+    lives client-side (IndexedDB) + in the server `sync_ops` ledger instead of
+    a `sync_status` column on every table.
+19. Seed: admin + bap.lead are Steering Committee;
+    `sgo.office@endeavourmining.com` demonstrates site isolation (SGO only).

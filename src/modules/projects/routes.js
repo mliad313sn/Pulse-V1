@@ -63,7 +63,9 @@ router.get("/:projectId", withProjectAccess(), async (req, res, next) => {
 
 router.put("/:projectId", withProjectAccess(), async (req, res, next) => {
   try {
-    const body = projectBody.partial().extend({ updated_at: z.string() }).parse(req.body);
+    const body = projectBody.partial()
+      .extend({ updated_at: z.string(), stage_note: z.string().max(500).optional() })
+      .parse(req.body);
     const { updated_at, divisions, sites, ...patch } = body;
     const project = await service.updateProject(req.user, req.projectAccess, patch, updated_at);
     if (divisions || sites) {
