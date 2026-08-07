@@ -122,7 +122,9 @@ if (require.main === module) {
   migrate()
     .then(() => {
       const app = createApp();
-      app.listen(port, () => console.log(`PULSE listening on :${port} (GMT)`));
+      const server = require("http").createServer(app);
+      require("./modules/realtime/ws").attach(server); // E15 presenter sync
+      server.listen(port, () => console.log(`PULSE listening on :${port} (GMT)`));
       if (process.env.DISABLE_JOBS !== "true") {
         require("./jobs/snapshot").start();
         require("./jobs/backup").start();

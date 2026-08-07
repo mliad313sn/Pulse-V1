@@ -1,6 +1,7 @@
 "use strict";
 import { api, state } from "../lib/api.js";
 import { esc, fmtDate, ragDot, modal, toast, showError, optionList, emptyState } from "../lib/ui.js";
+import { connectPresenter, disconnectPresenter } from "../lib/presenter.js";
 
 const canManage = () => ["ADMIN", "DIVISION_LEAD"].includes(state.user.role);
 
@@ -133,6 +134,7 @@ function renderPrepare(container, d) {
 }
 
 let liveIdx = 0;
+let rtPresenting = false; // survives re-renders while driving the room
 
 function renderLive(container, d) {
   const mt = d.meeting;
@@ -169,8 +171,10 @@ function renderLive(container, d) {
       <span class="live-dot"></span>
       <span class="mtitle">${esc(mt.title)}</span>
       <span class="mtag">LIVE · PRESENTER MODE</span>
-      <span class="mscope">Single-driver: organizer captures, others refresh to view · GMT</span>
+      <span class="mscope">Room follows the presenter live · GMT</span>
+      <span id="rt-status" class="chip div" title="Realtime room">⇄ connecting…</span>
       <div class="mprog"><span>Item ${items.length ? liveIdx + 1 : 0} / ${items.length}</span>
+        ${d.canDrive ? `<button class="btn small" style="background:#fff;color:var(--edv-navy)" id="rt-present">📡 Present to room</button>` : ""}
         ${d.canDrive ? `<button class="btn small" style="background:#fff;color:var(--edv-navy)" id="close-meeting">■ Close &amp; generate minutes</button>` : ""}</div>
     </div>
     ${projBlock}
@@ -188,13 +192,41 @@ function renderLive(container, d) {
       <div class="nav-btns">
         <button id="prev" ${liveIdx === 0 ? "disabled" : ""}>‹ Prev</button>
         <button id="next" ${liveIdx >= items.length - 1 ? "disabled" : ""}>Next ›</button>
-      </div></div>` : `<button class="btn" style="margin-top:14px" onclick="location.reload()">⟳ Refresh view</button>`}`;
+      </div></div>` : `<label class="btn" style="margin-top:14px;display:inline-flex;align-items:center;gap:6px">
+        <input type="checkbox" id="rt-follow" checked> Follow presenter</label>`}`;
 
   const reload = () => renderMeetingLive(container, mt.id);
+
+  // ===== E15 realtime room: pointers only, data via authorized REST =====
+  let following = !d.canDrive;
+  const statusChip = container.querySelector("#rt-status");
+  const rt = connectPresenter(mt.id, {
+    onStatus: (s) => { if (statusChip) statusChip.textContent = s === "connected" ? "⇄ room live" : "⇄ reconnecting…"; },
+    onRoom: (r) => {
+      if (statusChip && r.presenterName) statusChip.textContent = `⇄ ${r.presenterName} presenting · ${r.followers} in room`;
+      if (following && r.context != null) applyContext(r.context);
+    },
+    onContext: (ctx) => { if (following) applyContext(ctx); },
+    onPresenter: (p) => {
+      if (statusChip) statusChip.textContent = p.presenterName ? `⇄ ${p.presenterName} presenting` : "⇄ room live";
+      if (p.presenterId !== state.user.id) rtPresenting = false;
+    },
+    onFollowers: (n) => { if (statusChip && !statusChip.textContent.includes("presenting")) statusChip.textContent = `⇄ room live · ${n} in room`; },
+    onError: (e) => toast(e, true),
+  });
+  function applyContext(ctx) {
+    const m = /^item:(\d+)$/.exec(ctx);
+    if (m && Number(m[1]) !== liveIdx) { liveIdx = Number(m[1]); reload(); }
+  }
+  const followBox = container.querySelector("#rt-follow");
+  if (followBox) followBox.onchange = () => { following = followBox.checked; }; // opt-out (§38)
+  const presentBtn = container.querySelector("#rt-present");
+  if (presentBtn) presentBtn.onclick = () => { rtPresenting = true; rt.present(); rt.pivot(`item:${liveIdx}`); };
+
   if (!d.canDrive) return;
 
-  container.querySelector("#prev").onclick = () => { liveIdx--; reload(); };
-  container.querySelector("#next").onclick = () => { liveIdx++; reload(); };
+  container.querySelector("#prev").onclick = () => { liveIdx--; if (rtPresenting) rt.pivot(`item:${liveIdx}`); reload(); };
+  container.querySelector("#next").onclick = () => { liveIdx++; if (rtPresenting) rt.pivot(`item:${liveIdx}`); reload(); };
   container.querySelector("#close-meeting").onclick = async () => {
     try {
       await api.post(`/api/v1/meetings/${mt.id}/close`, {});

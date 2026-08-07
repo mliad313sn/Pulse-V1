@@ -277,6 +277,10 @@ const routes = [
 
 export async function route() {
   const hash = location.hash || "#/portfolio";
+  // leaving a live meeting closes its realtime room connection
+  if (!/^#\/meetings\/\d+/.test(hash)) {
+    import("./lib/presenter.js").then((m) => m.disconnectPresenter()).catch(() => {});
+  }
   if (!state.user) {
     renderLogin();
     return;

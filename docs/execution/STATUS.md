@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **107/107 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **110/110 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -80,8 +80,14 @@ for unauthorized users, and site-restricted users export only their site.
 Deps: exceljs+pdfkit+pptxgenjs added (uuid overridden to ^11 — audit stays 0).
 
 ## Next executable work items (dependency order)
-10. **E15**: WebSocket presenter sync.
 12. **E30**: release qualification per §108 journeys.
+
+## Completed: E15 realtime presenter sync (2026-08-07)
+WebSocket rooms with session-cookie-authenticated upgrade (HMAC verified,
+forged cookies 401). Transport carries view pointers only — data always flows
+through authorized REST. Presenter chair with Viewer refusal and Admin/
+Steering takeover, pivot broadcast, late-join replay, reconnect with backoff,
+Follow-presenter opt-out in the live meeting view.
 
 ## Completed: E06 change control + baselines (2026-08-07)
 Immutable versioned baseline snapshots (v1 = original; dates + approved budget
