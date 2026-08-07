@@ -73,7 +73,7 @@ function criticalPath(tasksIn, depsIn) {
     let es = 0;
     for (const d of preds.get(id)) {
       const p = d.predecessor_task_id, lag = d.lag_days || 0;
-      const type = d.dependency_type || "FS";
+      const type = d.dep_type || d.dependency_type || "FS";
       let req;
       if (type === "SS") req = ES.get(p) + lag;            // start after pred starts
       else if (type === "FF") req = EF.get(p) + lag - dur; // finish after pred finishes
@@ -100,7 +100,7 @@ function criticalPath(tasksIn, depsIn) {
     let lf = projectLength;
     for (const d of succs.get(id)) {
       const s = d.successor_task_id, lag = d.lag_days || 0;
-      const type = d.dependency_type || "FS";
+      const type = d.dep_type || d.dependency_type || "FS";
       let cap;
       if (type === "SS") cap = LS.get(s) - lag + dur;      // pred LS <= succ LS - lag
       else if (type === "FF") cap = LF.get(s) - lag;       // pred LF <= succ LF - lag
@@ -119,7 +119,7 @@ function criticalPath(tasksIn, depsIn) {
     let free = projectLength - EF.get(id);
     for (const d of succs.get(id)) {
       const s = d.successor_task_id, lag = d.lag_days || 0;
-      const type = d.dependency_type || "FS";
+      const type = d.dep_type || d.dependency_type || "FS";
       let gap;
       if (type === "SS") gap = ES.get(s) - (ES.get(id) + lag);
       else if (type === "FF") gap = EF.get(s) - (EF.get(id) + lag);
@@ -140,4 +140,80 @@ function criticalPath(tasksIn, depsIn) {
   return { projectLength, tasks: result, criticalIds, nearCriticalIds };
 }
 
-module.exports = { topoSort, wouldCycle, criticalPath, durationDays };
+// Phase 2 — schedule quality checks: pure findings a planner acts on.
+function qualityChecks(tasks, deps) {
+  const findings = [];
+  const active = tasks.filter((t) => t.status !== "CANCELLED" && t.status !== "DONE");
+  const linked = new Set();
+  for (const d of deps) {
+    if (d.deleted_at) continue;
+    linked.add(d.predecessor_task_id);
+    linked.add(d.successor_task_id);
+  }
+  const children = new Map();
+  for (const t of tasks) {
+    if (t.parent_task_id) {
+      if (!children.has(t.parent_task_id)) children.set(t.parent_task_id, []);
+      children.get(t.parent_task_id).push(t);
+    }
+  }
+  for (const t of active) {
+    const isSummary = children.has(t.id);
+    if (!t.planned_start || !t.planned_finish) {
+      findings.push({ task_id: t.id, check: "missing_dates", detail: `"${t.title}" has no planned dates — invisible to the critical path` });
+    }
+    if (!isSummary && !linked.has(t.id) && active.length > 1) {
+      findings.push({ task_id: t.id, check: "orphan", detail: `"${t.title}" has no dependencies in or out — its sequencing is unmanaged` });
+    }
+    if (t.planned_finish && new Date(t.planned_finish) < new Date() && t.status !== "IN_PROGRESS") {
+      findings.push({ task_id: t.id, check: "past_due_not_started", detail: `"${t.title}" planned finish is in the past but it is ${t.status}` });
+    }
+    if (t.estimated_hours != null && t.remaining_hours != null && Number(t.remaining_hours) > Number(t.estimated_hours) * 1.5) {
+      findings.push({ task_id: t.id, check: "effort_blowout", detail: `"${t.title}" remaining ${t.remaining_hours}h exceeds 150% of estimate ${t.estimated_hours}h` });
+    }
+  }
+  const isoQ = (v) => v ? new Date(v).toISOString().slice(0, 10) : null;
+  for (const [pid, kids] of children) {
+    const parent = tasks.find((t) => t.id === pid);
+    if (!parent || parent.deleted_at) continue;
+    const starts = kids.map((k) => isoQ(k.planned_start)).filter(Boolean).sort();
+    const ends = kids.map((k) => isoQ(k.planned_finish)).filter(Boolean).sort();
+    if (parent.planned_start && starts.length && isoQ(parent.planned_start) > starts[0]) {
+      findings.push({ task_id: pid, check: "summary_window", detail: `Summary "${parent.title}" starts after its earliest child` });
+    }
+    if (parent.planned_finish && ends.length && isoQ(parent.planned_finish) < ends[ends.length - 1]) {
+      findings.push({ task_id: pid, check: "summary_window", detail: `Summary "${parent.title}" ends before its latest child` });
+    }
+  }
+  return findings;
+}
+
+// Summary (WBS parent) rollup: computed window + effort from children.
+function rollupSummaries(tasks) {
+  const iso = (v) => v ? new Date(v).toISOString().slice(0, 10) : null;
+  const children = new Map();
+  for (const t of tasks) {
+    if (t.parent_task_id) {
+      if (!children.has(t.parent_task_id)) children.set(t.parent_task_id, []);
+      children.get(t.parent_task_id).push(t);
+    }
+  }
+  const rollup = new Map();
+  for (const [pid, kids] of children) {
+    const starts = kids.map((k) => iso(k.planned_start)).filter(Boolean).sort();
+    const ends = kids.map((k) => iso(k.planned_finish)).filter(Boolean).sort();
+    const sum = (f) => kids.reduce((s, k) => s + (k[f] != null ? Number(k[f]) : 0), 0);
+    const done = kids.filter((k) => k.status === "DONE").length;
+    rollup.set(pid, {
+      computed_start: starts[0] || null,
+      computed_finish: ends[ends.length - 1] || null,
+      children: kids.length,
+      children_done: done,
+      effort_hours: sum("estimated_hours"),
+      remaining_hours: sum("remaining_hours"),
+    });
+  }
+  return rollup;
+}
+
+module.exports = { topoSort, wouldCycle, criticalPath, durationDays, qualityChecks, rollupSummaries };

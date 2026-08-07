@@ -48,3 +48,11 @@ Continues the numbered decision log in CHANGELOG.md (D-1…D-19 recorded there).
   attachment content verified by magic bytes with a SCAN_MODE adapter
   (real scanner BLOCKED_EXTERNAL); CPM kernel upgraded in place keeping the
   existing API surface (earlyFinish/lateFinish/slack/critical preserved).
+- **D-28 — P2 planning shapes (2026-08-07).** WBS via tasks.parent_task_id with
+  loop-guarded chains; summary windows/effort are COMPUTED rollups (never
+  stored). Task baselines are separate versioned snapshots (task_baselines)
+  from project baselines — plan-level vs commitment-level history. Cross-project
+  dependencies are project-to-project edges (not task-to-task across projects)
+  — right altitude for portfolio blast-radius; blast radius counts concealed
+  projects without naming them. Kernel column fix: dep_type honored (was
+  reading dependency_type only — live data computed FS-only despite P0 kernel).

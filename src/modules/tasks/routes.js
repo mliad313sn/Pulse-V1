@@ -19,6 +19,8 @@ const wsBody = z.object({
 });
 
 const taskBody = z.object({
+  parent_task_id: z.number().int().positive().nullable().optional(),
+  remaining_hours: z.number().min(0).nullable().optional(),
   title: z.string().min(1).max(300),
   description: z.string().max(5000).nullable().optional(),
   workstream_id: z.number().int().positive().nullable().optional(),
@@ -86,6 +88,33 @@ router.delete("/projects/:projectId/dependencies/:depId", withProjectAccess(), a
     await service.removeDependency(req.user, req.projectAccess, Number(req.params.depId));
     res.json({ ok: true });
   } catch (err) { next(err); }
+});
+
+// ===== Phase 2: plan baselines + variance =====
+router.post("/projects/:projectId/plan/baseline", withProjectAccess(), async (req, res, next) => {
+  try {
+    const { label } = z.object({ label: z.string().trim().min(1).max(200).optional() }).parse(req.body || {});
+    res.status(201).json({ baseline: await service.captureTaskBaseline(req.user, req.projectAccess, label) });
+  } catch (err) { next(err); }
+});
+
+router.get("/projects/:projectId/plan/variance", withProjectAccess(), async (req, res, next) => {
+  try { res.json(await service.planVariance(req.projectAccess, req.query.version)); }
+  catch (err) { next(err); }
+});
+
+// ===== Phase 2: cross-project dependencies + blast radius =====
+router.post("/projects/:projectId/depends-on/:predecessorId", withProjectAccess(), async (req, res, next) => {
+  try {
+    const { note } = z.object({ note: z.string().max(500).optional() }).parse(req.body || {});
+    res.status(201).json({ dependency: await service.addProjectDependency(
+      req.user, req.projectAccess, Number(req.params.predecessorId), note) });
+  } catch (err) { next(err); }
+});
+
+router.get("/projects/:projectId/blast-radius", withProjectAccess(), async (req, res, next) => {
+  try { res.json(await service.blastRadius(req.user, req.projectAccess)); }
+  catch (err) { next(err); }
 });
 
 module.exports = router;

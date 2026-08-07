@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **146/146 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **149/149 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -89,10 +89,14 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
   checklists, workstreams, deliverables, migration 018); Admin-defined typed
   custom fields validated server-side, stored in projects.custom_json.
   (Configurable saved views deferred to P11 UX.)
-- **P2 Advanced planning**: WBS/summary tasks; effort/remaining; calendars +
-  exceptions; constraints; task baselines + variance; cross-project deps;
-  blast-radius; schedule quality checks; resource leveling. (FS/SS/FF/SF +
-  lag/lead + ES/EF/LS/LF + free float + near-critical DONE in P0.)
+- **P2 Advanced planning — MOSTLY DONE**: WBS parent/summary rollups,
+  remaining effort (auto-zero on DONE), task baselines + day-level variance,
+  cross-project dependencies + concealment-safe blast radius, 5 schedule
+  quality checks (migration 019). CPM full semantics from P0 — and a REAL BUG
+  FIXED: kernel read dependency_type but the DB column is dep_type, so live
+  plans computed FS-only; now honors both. REMAINING: working calendars +
+  exceptions, date constraints (MUST_START_ON etc.), resource leveling,
+  Gantt visual (P11).
 - **P3 Capacity intelligence**: weekly/monthly capacity; BAU/leave/tentative;
   role-based demand; skills/certs/rates; skill-gap; requests/approvals;
   matching; scenario capacity; forecasting.
