@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **158/158 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **160/160 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -130,8 +130,16 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
   (⚗ Simulate in the capture bar evaluates any scenario read-only via the
   P6 evaluate API, money masked without finance flag); immutable meeting
   evidence already covered by versioned minutes (P0-era).
-- **P9 Intelligence**: explainable copilot/predictions/anomalies (Claude API
-  adapter, BLOCKED_EXTERNAL for key); never auto-approves.
+- **P9 Intelligence — DONE (core)**: official Anthropic SDK adapter (model
+  claude-opus-5, adaptive thinking, injected-fetch test seam); POST
+  /projects/:id/ai/summary drafts a source-grounded executive summary — the
+  model sees ONLY caller-authorized facts (confidentiality via
+  loadProjectAccess, money only with the finance flag), every fact carries a
+  [type:id] citation and the draft must cite; 503 BLOCKED_EXTERNAL without
+  ANTHROPIC_API_KEY (/ai/status tells the UI); strictly read-only — AI has no
+  write path and never approves. UI: ✨ Draft with AI fills the exec
+  commentary for human review. REMAINING: predictions/anomaly detection;
+  meeting-assistant drafting.
 - **P10 Platform**: versioned API + OpenAPI; webhooks; Jira/ADO/ServiceNow/
   Teams/PowerBI/ERP/HRIS/SCIM adapters (contract + fake pattern).
 - **P11 UX**: configurable views (board/timeline/Gantt/heatmap/graph);

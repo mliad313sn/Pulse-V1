@@ -62,6 +62,7 @@ export async function renderProject(container, projectId) {
           <h3>Executive commentary</h3>
           <textarea id="exec-text" ${canFull ? "" : "readonly"} placeholder="What must the CFO/CIO understand this month?">${esc(p.exec_commentary || "")}</textarea>
           ${canFull ? '<button class="btn primary small" id="save-exec" style="margin-top:8px">Save commentary</button>' : ""}
+          ${canFull ? '<span id="ai-draft-slot"></span>' : ""}
           <div class="hint" style="color:rgba(255,255,255,.7)">Feeds the deck verbatim.</div>
         </div>
         ${d.gate && d.gate.next ? `<div class="panel"><h3>Next gate → ${esc(d.gate.next)}</h3>
@@ -128,6 +129,29 @@ export async function renderProject(container, projectId) {
       reload();
     } catch (err) { showError(err); if (err.status === 409) reload(); }
   };
+  // SPM P9 — AI draft (only offered when the deployment has a key; the draft
+  // lands in the textarea for human review, it is never auto-saved)
+  const aiSlot = container.querySelector("#ai-draft-slot");
+  if (aiSlot) {
+    api.get("/api/v1/ai/status").then((ai) => {
+      if (!ai.enabled) return;
+      const btn = document.createElement("button");
+      btn.className = "btn small";
+      btn.style.marginTop = "8px";
+      btn.textContent = "✨ Draft with AI";
+      btn.title = "Drafts a cited summary from this project's records — review and edit before saving";
+      btn.onclick = async () => {
+        btn.disabled = true; btn.textContent = "Drafting…";
+        try {
+          const r = await api.post(`/api/v1/projects/${p.id}/ai/summary`, {});
+          container.querySelector("#exec-text").value = r.draft;
+          toast("Draft ready — review, edit, then Save commentary");
+        } catch (err) { showError(err); }
+        finally { btn.disabled = false; btn.textContent = "✨ Draft with AI"; }
+      };
+      aiSlot.appendChild(btn);
+    }).catch(() => {});
+  }
   const editBtn = container.querySelector("#edit-project");
   if (editBtn) editBtn.onclick = () => editProjectModal(d, reload);
   const ovrBtn = container.querySelector("#override-btn");
