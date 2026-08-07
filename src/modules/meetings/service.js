@@ -143,6 +143,25 @@ async function buildAgenda(siteId /* nullable */, meetingType) {
     push(c.project_id, "Overdue CAPA", `${c.issue.slice(0, 120)} (due ${c.due_date.toISOString().slice(0, 10)})`);
   }
 
+  // (i) major resource conflicts: people allocated >100% today (plan §36 rule 9)
+  const overloaded = await query(
+    `SELECT u.name, sum(ra.percent)::int AS total
+       FROM resource_allocations ra
+       JOIN users u ON u.id = ra.user_id AND u.deleted_at IS NULL
+       JOIN projects p ON p.id = ra.project_id AND p.deleted_at IS NULL
+            AND p.stage <> 'CLOSED' AND p.operating_status NOT IN ('CANCELLED')
+      WHERE ra.deleted_at IS NULL
+        AND (now() AT TIME ZONE 'utc')::date BETWEEN ra.start_date AND ra.end_date
+      GROUP BY u.id, u.name HAVING sum(ra.percent) > 100
+      ORDER BY total DESC LIMIT 10`
+  );
+  if (overloaded.rows.length) {
+    items.push({
+      project_id: null, reason: "Resource conflicts",
+      notes: overloaded.rows.map((o) => `${o.name} at ${o.total}%`).join("; "),
+    });
+  }
+
   return items;
 }
 

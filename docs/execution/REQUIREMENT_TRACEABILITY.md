@@ -19,9 +19,9 @@ Evidence = test file(s) unless noted. Updated: 2026-08-07.
 | E11 Risk/roadblock/CAPA | §27–29 | COMPLETE (core) | risk register (scored, residual), CAPA verified lifecycle, roadblock escalate/reopen-with-reason | risk-capa.test (5). Gap: heatmap UI, CAPA analytics dashboards |
 | E12 Deliverable/RACI | §30,31 | PARTIAL | deliverables, R/A/C/I, R/A can progress | ecosystem.test. Gap: acceptance workflow, RACI quality warnings |
 | E13 Updates/decisions | §32–34 | COMPLETE (core) | 20-second updates, exec commentary → decks verbatim, decision register | permissions, meetings tests. Gap: update revisioning, 4-mood naming |
-| E14 Meetings | §35,36,39 | COMPLETE (core) | 8 agenda rules, site scope, live capture, escaped minutes, VERSIONED minutes (re-close = v+1, history immutable) | meetings.test (6), risk-capa.test (6). Gap: rule 9 (needs E16), meeting types list |
+| E14 Meetings | §35,36,39 | COMPLETE (core) | 9 agenda rules, site scope, live capture, escaped minutes, VERSIONED minutes (re-close = v+1, history immutable) | meetings.test (6), risk-capa.test (6). Gap: meeting types list |
 | E15 Realtime meeting sync | §38,124 | NOT_STARTED | single-driver presenter mode only | — |
-| E16 Resources/time | §40,41 | NOT_STARTED | — | — |
+| E16 Resources/time | §40,41 | PARTIAL | allocations (percent, dates, role), workload view with per-project overload explanation ('125% across 2 projects: …'), agenda rule 9 (resource conflicts), self-only time entries with 0-24h bounds, planned-vs-actual summary | resources.test (2). Gap: skills tags, site/division capacity rollups, approval workflow |
 | E17 Finance | §42,145 | NOT_STARTED | — | — |
 | E18 Benefits | §43 | NOT_STARTED | — | — |
 | E19 Notifications | §52 | PARTIAL | 7 in-app types incl. SYNC_HALTED, bell, deep links | meetings.test. Gap: dedupe keys, reminder schedule (T-14…T+7), preferences |

@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **91/91 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **93/93 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -43,7 +43,7 @@ Channel dispatch made commit-race tolerant (FK retry then unlinked ledger row).
 ## Next executable work items (dependency order)
 4. **E04 finish**: pillars/portfolios/programs entities + portfolio filter.
 6. **E22**: Executive Command Center view; KPI drill-throughs.
-7. **E16/E17/E18**: resources → time → finance (field-masked) → benefits.
+7. **E17/E18**: finance (field-masked) → benefits.
 8. **E28**: i18n string extraction (EN/FR) then axe automation.
 9. **E23**: server-side export service + PDF + seeded leak tests.
 10. **E15**: WebSocket presenter sync.
