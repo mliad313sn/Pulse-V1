@@ -52,6 +52,36 @@ const benefitBody = z.object({
   target_date: dateStr,
   actual: z.number().nullable().optional(),
   status: z.enum(["DEFINED", "ON_TRACK", "AT_RISK", "ACHIEVED", "MISSED"]).optional(),
+  realization_start: dateStr,
+  realization_end: dateStr,
+  measurement_frequency: z.enum(["MONTHLY", "QUARTERLY", "ANNUAL"]).optional(),
+  monetary: z.boolean().optional(),
+});
+
+// ===== SPM P4 — benefit realization: time-phased measurement, allowed to
+// continue after the project closes (that is when a benefit proves real).
+const measurementBody = z.object({
+  period: z.string().regex(/^\d{4}-\d{2}$/),
+  planned: z.number().nullable().optional(),
+  actual: z.number().nullable().optional(),
+  note: z.string().max(1000).nullable().optional(),
+});
+router.post("/benefits/:id/measurements", async (req, res, next) => {
+  try {
+    const measurement = await service.recordBenefitMeasurement(
+      req.user, Number(req.params.id), measurementBody.parse(req.body));
+    res.status(201).json({ measurement });
+  } catch (err) { next(err); }
+});
+
+router.get("/benefits/:id/realization", async (req, res, next) => {
+  try { res.json(await service.benefitRealization(req.user, Number(req.params.id))); }
+  catch (err) { next(err); }
+});
+
+router.get("/projects/:projectId/benefits/realization", withProjectAccess(), async (req, res, next) => {
+  try { res.json(await service.benefitsRealizationSummary(req.user, req.projectAccess)); }
+  catch (err) { next(err); }
 });
 
 router.get("/projects/:projectId/benefits", withProjectAccess(), async (req, res, next) => {

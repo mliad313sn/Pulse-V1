@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **204/204 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **209/209 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -124,7 +124,16 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
   finance-gated, migration 020) + full EVM (PV/EV/AC/CPI/SPI/BAC/ETC/EAC/VAC,
   explainable, honest n/a without actuals, AC FX-converted, EV from computed
   milestone progress). FX/multicurrency from P0. REMAINING: vendor/PO/contract
-  linkage; benefit realization periods + post-closure observations.
+  linkage. COMPLETED (migration 027): benefit realization — realization window
+  + measurement frequency on the benefit, time-phased benefit_measurements,
+  and a pure realization kernel that measures against the BASELINE (40→25
+  incidents is 100% realized at 25, not 62%) and handles decreasing targets.
+  Missing due periods are NAMED rather than averaged away. Measurement
+  deliberately continues after the project CLOSES and is flagged
+  post_closure — the honest test of whether a benefit was real or just a
+  business-case number — with a `sustained` signal when post-closure
+  observations hold up. Per-project realization summary endpoint. The
+  closure test walks the real gate chain (evidence supplied, never bypassed).
 - **P5 Health 2.0 — DONE (core)**: GET /projects/:id/health scores seven
   weighted dimensions (schedule 25, risks 15, finance 15, governance 15,
   resources 10, benefits 10, confidence 10) by CRITICALITY not counts — a

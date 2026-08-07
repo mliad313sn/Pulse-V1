@@ -178,18 +178,23 @@ async function evm(actor, projectAccess, asOfPeriod) {
 }
 
 // ===== E18 benefits (operational visibility, normal project access) =====
-const BENEFIT_FIELDS = ["title", "owner_user_id", "baseline", "target", "unit", "measure_method", "target_date", "actual", "status"];
+const BENEFIT_FIELDS = ["title", "owner_user_id", "baseline", "target", "unit", "measure_method",
+  "target_date", "actual", "status",
+  "realization_start", "realization_end", "measurement_frequency", "monetary"];
 
 async function addBenefit(actor, projectAccess, input) {
   if (projectAccess.access !== "FULL") throw forbidden("Full edit rights required to define benefits");
   return withTransaction(async (client) => {
     const { rows } = await client.query(
       `INSERT INTO benefits (project_id, title, owner_user_id, baseline, target, unit,
-         measure_method, target_date, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+         measure_method, target_date, realization_start, realization_end,
+         measurement_frequency, monetary, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
       [projectAccess.project.id, input.title, input.owner_user_id || null,
        input.baseline ?? null, input.target ?? null, input.unit || null,
-       input.measure_method || null, input.target_date || null, actor.id]
+       input.measure_method || null, input.target_date || null,
+       input.realization_start || null, input.realization_end || null,
+       input.measurement_frequency || "MONTHLY", input.monetary === true, actor.id]
     );
     await audit.recordCreate(client, "benefit", rows[0].id, actor.id);
     return rows[0];
@@ -210,11 +215,15 @@ async function updateBenefit(actor, id, patch, expectedUpdatedAt) {
   return withTransaction(async (client) => {
     const res = await client.query(
       `UPDATE benefits SET title=$3, owner_user_id=$4, baseline=$5, target=$6, unit=$7,
-              measure_method=$8, target_date=$9, actual=$10, status=$11, updated_at=now()
+              measure_method=$8, target_date=$9, actual=$10, status=$11,
+              realization_start=$12, realization_end=$13, measurement_frequency=$14,
+              monetary=$15, updated_at=now()
         WHERE id=$1 AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $2::timestamptz)
           AND deleted_at IS NULL RETURNING *`,
       [id, expectedUpdatedAt, after.title, after.owner_user_id, after.baseline, after.target,
-       after.unit, after.measure_method, after.target_date, after.actual, after.status]
+       after.unit, after.measure_method, after.target_date, after.actual, after.status,
+       after.realization_start || null, after.realization_end || null,
+       after.measurement_frequency || "MONTHLY", after.monetary === true]
     );
     if (!res.rows.length) {
       const cur = await client.query(`SELECT * FROM benefits WHERE id=$1 AND deleted_at IS NULL`, [id]);
@@ -239,4 +248,93 @@ async function listBenefits(projectAccess) {
   return rows;
 }
 
-module.exports = { addLine, updateLine, financials, addBenefit, updateBenefit, listBenefits, canFinance, listFxRates, setFxRate, setCostPlan, evm };
+// ===== SPM P4 — benefit realization =====
+
+async function loadBenefit(actor, id) {
+  const { rows } = await query(`SELECT * FROM benefits WHERE id = $1 AND deleted_at IS NULL`, [id]);
+  if (!rows.length) throw notFound("Benefit not found");
+  const projectAccess = await loadProjectAccess(rows[0].project_id, actor); // 404s if concealed
+  return { benefit: rows[0], projectAccess };
+}
+
+// Record (or correct) one period's measurement. Deliberately still allowed
+// once the project is CLOSED — post-closure observation is the whole point of
+// benefit tracking, and it is flagged as such rather than hidden.
+async function recordBenefitMeasurement(actor, benefitId, input) {
+  const { benefit, projectAccess } = await loadBenefit(actor, benefitId);
+  const allowed = projectAccess.access === "FULL" || benefit.owner_user_id === actor.id;
+  if (!allowed) throw forbidden("Only full project access or the benefit owner records measurements");
+  if (input.actual == null && input.planned == null) {
+    throw badRequest("Provide a planned and/or actual value for the period");
+  }
+  const closed = projectAccess.project.stage === "CLOSED"
+    || projectAccess.project.operating_status === "COMPLETED";
+  return withTransaction(async (client) => {
+    const { rows } = await client.query(
+      `INSERT INTO benefit_measurements (benefit_id, period, planned, actual, note, post_closure, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (benefit_id, period) DO UPDATE SET
+         planned = coalesce(EXCLUDED.planned, benefit_measurements.planned),
+         actual = coalesce(EXCLUDED.actual, benefit_measurements.actual),
+         note = EXCLUDED.note, updated_at = now()
+       RETURNING *`,
+      [benefitId, input.period, input.planned ?? null, input.actual ?? null,
+       input.note || null, closed, actor.id]);
+    await audit.record(client, {
+      entity: "benefit", entityId: benefitId, userId: actor.id,
+      changes: [{ field: `measurement:${input.period}`, old: null,
+        new: `actual ${input.actual ?? "—"}${closed ? " (post-closure)" : ""}` }],
+    });
+    return rows[0];
+  });
+}
+
+async function benefitRealization(actor, benefitId) {
+  const { benefit } = await loadBenefit(actor, benefitId);
+  const { rows } = await query(
+    `SELECT * FROM benefit_measurements WHERE benefit_id = $1 AND deleted_at IS NULL ORDER BY period`,
+    [benefitId]);
+  const { realization } = require("./realization");
+  return { benefit, ...realization(benefit, rows) };
+}
+
+// Portfolio-level view: is the value the organisation was promised arriving?
+async function benefitsRealizationSummary(actor, projectAccess) {
+  const benefits = await listBenefits(projectAccess);
+  const { realization } = require("./realization");
+  const ids = benefits.map((b) => b.id);
+  const { rows: measurements } = ids.length
+    ? await query(`SELECT * FROM benefit_measurements WHERE benefit_id = ANY($1::bigint[])
+                    AND deleted_at IS NULL ORDER BY period`, [ids])
+    : { rows: [] };
+  const byBenefit = new Map();
+  for (const m of measurements) {
+    if (!byBenefit.has(m.benefit_id)) byBenefit.set(m.benefit_id, []);
+    byBenefit.get(m.benefit_id).push(m);
+  }
+  const rows = benefits.map((b) => {
+    const r = realization(b, byBenefit.get(b.id) || []);
+    return {
+      benefit_id: b.id, title: b.title, unit: b.unit, monetary: b.monetary,
+      status: r.status, realized_pct: r.realized_pct,
+      missing_periods: r.missing_periods.length,
+      post_closure_observations: r.post_closure_observations,
+      sustained: r.sustained, explanation: r.explanation,
+    };
+  });
+  const measured = rows.filter((r) => r.realized_pct != null);
+  return {
+    benefits: rows,
+    tracked: benefits.length,
+    measured: measured.length,
+    average_realized_pct: measured.length
+      ? Math.round(measured.reduce((s, r) => s + r.realized_pct, 0) / measured.length) : null,
+    unmeasured: rows.filter((r) => r.realized_pct == null).map((r) => r.title),
+  };
+}
+
+module.exports = {
+  addLine, updateLine, financials, addBenefit, updateBenefit, listBenefits, canFinance,
+  listFxRates, setFxRate, setCostPlan, evm,
+  recordBenefitMeasurement, benefitRealization, benefitsRealizationSummary,
+};
