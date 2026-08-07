@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **156/156 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **158/158 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -122,8 +122,14 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
   blast radius as nodes+edges, plus plain answers (why / approvals / last
   changes / impacted); concealment preserved (hidden downstream counted,
   never named). REMAINING: graph UI visualization (P11).
-- **P8 Meeting Mode 2.0**: live scenario simulation in Steering meetings;
-  decision→CR conversion; immutable meeting evidence.
+- **P8 Meeting Mode 2.0 — DONE (core)**: decision→CR conversion (POST
+  /meetings/:id/decisions/:did/convert-to-cr, migration 022 links
+  decisions.change_request_id; organizer/Admin/Steering convert; CR stays
+  PENDING with meeting evidence in the rationale; once-only; convert button
+  + CR chip in the live meeting UI); live scenario simulation in meetings
+  (⚗ Simulate in the capture bar evaluates any scenario read-only via the
+  P6 evaluate API, money masked without finance flag); immutable meeting
+  evidence already covered by versioned minutes (P0-era).
 - **P9 Intelligence**: explainable copilot/predictions/anomalies (Claude API
   adapter, BLOCKED_EXTERNAL for key); never auto-approves.
 - **P10 Platform**: versioned API + OpenAPI; webhooks; Jira/ADO/ServiceNow/

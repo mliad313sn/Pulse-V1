@@ -278,12 +278,13 @@ async function getMeetingDetail(user, id) {
     visibleItems.push(it);
   }
   const captured = await query(
-    `SELECT 'action' AS kind, a.id, a.title AS text, u.name AS owner, a.due_date, p.code AS project_code
+    `SELECT 'action' AS kind, a.id, a.title AS text, u.name AS owner, a.due_date, p.code AS project_code,
+            NULL::bigint AS change_request_id
        FROM actions a LEFT JOIN users u ON u.id = a.owner_user_id
        LEFT JOIN projects p ON p.id = a.project_id
       WHERE a.meeting_id = $1 AND a.deleted_at IS NULL
      UNION ALL
-     SELECT 'decision', d.id, d.text, d.decided_by, d.date, p2.code
+     SELECT 'decision', d.id, d.text, d.decided_by, d.date, p2.code, d.change_request_id
        FROM decisions d LEFT JOIN projects p2 ON p2.id = d.project_id
       WHERE d.meeting_id = $1 AND d.deleted_at IS NULL
      ORDER BY id`,
@@ -411,6 +412,46 @@ async function capture(actor, meetingId, payload) {
     return ins.rows[0];
   }
   throw badRequest("Unknown capture kind");
+}
+
+// SPM Phase 8 — a captured decision becomes a governed change request.
+// The decision text is the evidence; the CR itself stays PENDING and goes
+// through the normal Steering/Admin approval chain — conversion proposes,
+// it never approves. One decision converts at most once.
+async function convertDecisionToChangeRequest(actor, meetingId, decisionId, input) {
+  const meeting = await loadMeeting(meetingId);
+  if (!canDrive(actor, meeting) && actor.is_steering_committee !== true) {
+    throw forbidden("Only the organizer, Admin or Steering convert meeting decisions");
+  }
+  const { rows } = await query(
+    `SELECT * FROM decisions WHERE id = $1 AND meeting_id = $2 AND deleted_at IS NULL`,
+    [decisionId, meetingId]);
+  if (!rows.length) throw notFound("Decision not found in this meeting");
+  const decision = rows[0];
+  if (decision.change_request_id) {
+    throw badRequest(`Already converted to change request #${decision.change_request_id}`);
+  }
+  const projectAccess = await loadProjectAccess(decision.project_id, actor);
+  const changes = require("../changes/service");
+  const when = decision.date instanceof Date ? decision.date.toISOString().slice(0, 10) : decision.date;
+  const cr = await changes.createChangeRequest(actor, projectAccess, {
+    type: input.type,
+    title: input.title || `Meeting decision: ${decision.text.slice(0, 120)}`,
+    rationale: `Decision captured in meeting "${meeting.title}" (${when}${decision.decided_by ? `, decided by ${decision.decided_by}` : ""}): ${decision.text}`,
+    impact_analysis: input.impact_analysis || null,
+    cost_impact: input.cost_impact ?? null,
+    schedule_impact_days: input.schedule_impact_days ?? null,
+  });
+  await withTransaction(async (client) => {
+    await client.query(
+      `UPDATE decisions SET change_request_id = $2, updated_at = now() WHERE id = $1`,
+      [decisionId, cr.id]);
+    await audit.record(client, {
+      entity: "decision", entityId: decisionId, userId: actor.id,
+      changes: [{ field: "change_request_id", old: null, new: String(cr.id) }],
+    });
+  });
+  return cr;
 }
 
 // Close: build minutes as structured JSON (plan §4.3) and store the snapshot
@@ -551,5 +592,5 @@ ${rows(minutes.rag_snapshot, (r) => `<tr><td>${esc(r.project)}</td><td>${ragChip
 module.exports = {
   createMeeting, listMeetings, getMeetingDetail, updateItems, setStatus,
   setAttendance, capture, closeMeeting, renderMinutesHtml, buildAgenda, loadMeeting,
-  getMinutesVersion, listMinutesVersions,
+  getMinutesVersion, listMinutesVersions, convertDecisionToChangeRequest,
 };

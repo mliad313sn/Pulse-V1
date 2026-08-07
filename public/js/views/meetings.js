@@ -181,7 +181,10 @@ function renderLive(container, d) {
     <div class="captured" style="background:var(--surface-card);border:1px dashed var(--line);color:var(--ink)">
       <h4 style="color:var(--ink-faint)">Captured this meeting — real objects linked to project + meeting</h4>
       <ul>${d.captured.map((c) => `<li><span class="ctype ${c.kind}">${c.kind.toUpperCase()}</span>
-        ${esc(c.text)}${c.owner ? ` — ${esc(c.owner)}` : ""}${c.project_code ? ` — ${esc(c.project_code)}` : ""}</li>`).join("") || "<li class='muted'>Nothing captured yet.</li>"}</ul>
+        ${esc(c.text)}${c.owner ? ` — ${esc(c.owner)}` : ""}${c.project_code ? ` — ${esc(c.project_code)}` : ""}
+        ${c.kind === "decision" ? (c.change_request_id
+          ? ` <span class="chip stage" title="Converted to change request">CR #${c.change_request_id}</span>`
+          : (d.canDrive ? ` <button class="btn small convert-cr" data-id="${c.id}" data-text="${esc(c.text)}" title="Convert this decision into a governed change request">→ Change request</button>` : "")) : ""}</li>`).join("") || "<li class='muted'>Nothing captured yet.</li>"}</ul>
     </div>
     ${d.canDrive ? `<div class="capture-bar" style="position:sticky;bottom:0;margin:20px -22px -22px;border-radius:0">
       <span class="cap-label">CAPTURE →</span>
@@ -189,6 +192,7 @@ function renderLive(container, d) {
       <button class="cap" data-kind="decision">+ Decision</button>
       <button class="cap" data-kind="roadblock">+ Roadblock</button>
       <button class="cap" data-kind="note">✎ Note</button>
+      <button class="cap" id="simulate-btn" title="Evaluate a portfolio scenario live — nothing is changed">⚗ Simulate</button>
       <div class="nav-btns">
         <button id="prev" ${liveIdx === 0 ? "disabled" : ""}>‹ Prev</button>
         <button id="next" ${liveIdx >= items.length - 1 ? "disabled" : ""}>Next ›</button>
@@ -234,7 +238,74 @@ function renderLive(container, d) {
       reload();
     } catch (err) { showError(err); }
   };
-  container.querySelectorAll(".cap").forEach((b) => b.onclick = () => captureModal(d, it, b.dataset.kind, reload));
+  container.querySelectorAll(".cap").forEach((b) => {
+    if (b.id === "simulate-btn") { b.onclick = () => simulateModal(); return; }
+    b.onclick = () => captureModal(d, it, b.dataset.kind, reload);
+  });
+  container.querySelectorAll(".convert-cr").forEach((b) =>
+    b.onclick = () => convertDecisionModal(d.meeting.id, Number(b.dataset.id), b.dataset.text, reload));
+}
+
+// SPM P8 — decision → governed change request (stays PENDING for Steering)
+function convertDecisionModal(meetingId, decisionId, text, reload) {
+  modal({
+    title: "Convert decision to change request",
+    saveLabel: "Create change request (PENDING)",
+    body: `
+      <p class="muted" style="font-size:.85rem">“${esc(text)}”<br>
+      The change request is created <b>PENDING</b> — Steering/Admin still decide it through change control.</p>
+      <div class="frow">
+        <div class="field"><label>Type</label><select name="type">
+          ${["SCHEDULE", "SCOPE", "BUDGET", "BENEFIT", "RESOURCE", "CANCELLATION"].map((t) => `<option>${t}</option>`).join("")}
+        </select></div>
+        <div class="field"><label>Schedule impact (days, optional)</label><input name="days" type="number" step="1"></div>
+      </div>
+      <div class="field"><label>Impact analysis (optional)</label><textarea name="impact"></textarea></div>`,
+    onSave: async (box) => {
+      const v = (n) => box.querySelector(`[name=${n}]`)?.value;
+      await api.post(`/api/v1/meetings/${meetingId}/decisions/${decisionId}/convert-to-cr`, {
+        type: v("type"),
+        schedule_impact_days: v("days") ? Number(v("days")) : null,
+        impact_analysis: v("impact")?.trim() || null,
+      });
+      toast("Change request created — awaiting Steering decision");
+      reload();
+    },
+  });
+}
+
+// SPM P8 — live scenario simulation in the meeting: pure evaluation, no writes
+async function simulateModal() {
+  let scenarios;
+  try { scenarios = (await api.get("/api/v1/scenarios")).scenarios; }
+  catch (err) { return showError(err); }
+  if (!scenarios.length) return toast("No scenarios yet — create one under Executive → Scenarios", true);
+  const box = modal({
+    title: "Simulate a portfolio scenario (read-only)",
+    saveLabel: "Close",
+    body: `
+      <div class="field"><label>Scenario</label><select name="scenario">
+        ${scenarios.map((s) => `<option value="${s.id}">${esc(s.title)} (${s.status})</option>`).join("")}
+      </select></div>
+      <div id="sim-out" class="muted" style="font-size:.85rem">Pick a scenario to see its effects — nothing is changed by simulating.</div>`,
+    onSave: async () => {},
+  });
+  const sel = box.querySelector("[name=scenario]");
+  const out = box.querySelector("#sim-out");
+  const run = async () => {
+    out.textContent = "Evaluating…";
+    try {
+      const ev = await api.get(`/api/v1/scenarios/${sel.value}/evaluate`);
+      out.innerHTML = `
+        ${ev.budgetDelta != null ? `<p><b>Portfolio budget delta:</b> ${Number(ev.budgetDelta).toLocaleString()} USD</p>` : `<p class="muted">Money detail hidden (finance flag required).</p>`}
+        <ul>${ev.effects.map((e) => `<li><b>${esc(e.code || `#${e.project_id}`)}</b> — ${esc(e.action)}
+          ${e.schedule ? `: target ${esc(String(e.schedule.from || "?"))} → ${esc(String(e.schedule.to || "?"))}` : ""}
+          ${e.budget && e.budget.freed != null ? ` · frees ${Number(e.budget.freed).toLocaleString()} USD` : ""}
+          ${e.detail ? ` · ${esc(e.detail)}` : ""}${e.error ? ` · ${esc(e.error)}` : ""}</li>`).join("") || "<li class='muted'>No effects computed.</li>"}</ul>`;
+    } catch (err) { out.textContent = err.message || "Evaluation failed"; }
+  };
+  sel.onchange = run;
+  run();
 }
 
 function captureModal(d, currentItem, kind, reload) {

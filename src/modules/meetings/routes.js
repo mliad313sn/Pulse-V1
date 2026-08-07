@@ -110,6 +110,22 @@ router.post("/:id/capture", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// SPM P8 — convert a captured decision into a governed (PENDING) change request
+const convertBody = z.object({
+  type: z.enum(["SCOPE", "SCHEDULE", "BUDGET", "BENEFIT", "RESOURCE", "CANCELLATION"]),
+  title: z.string().min(1).max(300).optional(),
+  impact_analysis: z.string().max(5000).nullable().optional(),
+  cost_impact: z.number().nullable().optional(),
+  schedule_impact_days: z.number().int().nullable().optional(),
+});
+router.post("/:id/decisions/:decisionId/convert-to-cr", async (req, res, next) => {
+  try {
+    const cr = await service.convertDecisionToChangeRequest(
+      req.user, Number(req.params.id), Number(req.params.decisionId), convertBody.parse(req.body));
+    res.status(201).json({ changeRequest: cr });
+  } catch (err) { next(err); }
+});
+
 // Minutes: structured JSON (latest, or ?version=n for a historical snapshot)
 router.get("/:id/minutes", async (req, res, next) => {
   try {
