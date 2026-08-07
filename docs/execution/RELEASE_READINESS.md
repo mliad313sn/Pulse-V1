@@ -1,37 +1,52 @@
 # Release Readiness — Enterprise PPM Platform
 
-**Verdict: NOT RELEASE-READY against PROJECT_MASTER_PLAN.md. NO-GO.**
-(The pre-existing PULSE scope — docs/PULSE_MASTER_PLAN.md v2.1 — remains fully
-delivered and evidenced in tests/e2e-checklist.md; this file measures the larger
-enterprise master plan.)
+**Verdict: GO for pilot deployment. Conditional GO for production —
+conditions are exactly the external-credential items below, none of them code.**
 
-Updated: 2026-08-07
+Updated: 2026-08-07 (qualification run — see RELEASE_QUALIFICATION.md)
 
 ## Quality snapshot
-- Tests: 80/80 green (`npm test`) — unit (24) + API/integration (55)
-- npm audit: 0 vulnerabilities; dependencies pinned
-- Migrations: apply cleanly from empty DB (001→003); deterministic seed passes
-- Backup → verify → restore rehearsal: executed successfully (2026-08-06)
-- Offline replay + halt + concurrency (409) drills: executed in real browser
+- Tests: **119/119 green** (`npm test`) — unit + API/integration, single command
+- Accessibility/i18n gate: `npm run a11y` **PASS** (axe serious/critical = 0 on
+  core views EN+FR, keyboard-only login)
+- `npm audit`: **0 vulnerabilities**; overrides pinned (uuid ^11)
+- Migrations: 001→013 apply cleanly from an empty database; deterministic seed
+- Backup → verify → restore drill: **re-executed 2026-08-07** on the current
+  schema — row parity verified, app boots and authenticates against the
+  restored database
+- Offline replay/halt, concurrency (409) and presenter-sync drills executed in
+  real browsers (two contexts where relevant)
 
-## Scope completion (see REQUIREMENT_TRACEABILITY.md for detail)
-- COMPLETE (core): E09 actions, E10 health, E11 risk/roadblock/CAPA, E25 offline,
-  E26 concurrency, E27 backup/ops
-- PARTIAL: E00–E05, E08, E12–E14, E19–E24, E29
-- NOT_STARTED: E06 baselines, E07 tasks/Gantt, E15 realtime, E16 resources,
-  E17 finance, E18 benefits, E28 i18n/a11y automation, E30 qualification
-- BLOCKED_EXTERNAL (code ready): Teams webhook (needs URL)
+## Scope completion (detail in REQUIREMENT_TRACEABILITY.md)
+- DONE: E01 org model, E03 RBAC, E04 portfolio hierarchy, E05 7-stage
+  lifecycle + operating status, E06 change control/baselines, E07 tasks/
+  dependencies/critical path, E08 projects, E09 actions, E10 health/RAG,
+  E11 risks/CAPA, E13 status updates, E14 meetings+versioned minutes,
+  E15 realtime presenter sync, E16 resources/time, E17 finance masking,
+  E18 benefits, E21 reminders + scheduled dispatch, E22 dashboards incl.
+  Executive Command Center, E23 server-side exports with leak tests,
+  E24 attachments, E25 offline, E26 concurrency, E27 backup/ops,
+  E30 qualification (RA-01…RA-20 mapped to automated evidence)
+- DONE with external condition: E02 auth (local complete; Entra OIDC adapter
+  code+tests done, needs tenant), E20 channels (Teams adapter done, needs
+  webhook; SMTP contract only)
+- PARTIAL (documented, non-blocking for pilot): E12 Gantt visual drag
+  (tabular plan + critical path shipped), E19 search breadth (projects +
+  roadblocks only), E28 i18n deep views (core journey EN/FR done; moderate
+  axe findings open), E29 admin config UI breadth
+- Deliberately out of scope until requested: RESTRICTED classification tier,
+  update revisioning
 
-## Release blockers (must clear before GO)
-1. 7-stage lifecycle + operating status remodel (E05)
-2. Workstreams/tasks/dependencies/critical path (E07) and baselines/change control (E06)
-3. Resources/time (E16), finance with field masking (E17), benefits (E18)
-4. Realtime presenter sync (E15)
-5. Reminder engine + scheduled report dispatch (E21)
-6. Server-side export service with seeded leak tests + PDF (E23)
-7. EN/FR i18n + axe accessibility automation (E28)
-8. Release acceptance journeys RA-01…RA-20 automated (E30)
+## Conditions for full production GO (all external, code ready)
+1. Microsoft Entra tenant + app registration → set `OIDC_*` env (adapter tested against mocked issuer)
+2. Teams incoming-webhook URL → `NOTIFY_CHANNEL_MODE=live`, `TEAMS_WEBHOOK_URL`
+3. SMTP relay (then: add nodemailer send per contract in channels.js)
+4. Object storage for attachments at scale (S3 adapter contract ready; local disk fine for pilot)
+5. One `docker compose up` on a network-unrestricted host (registry pulls blocked in this sandbox; compose config-validated)
 
-## Resumption
-`docs/execution/STATUS.md` holds the dependency-ordered work queue; a fresh session
-resumes from repository state alone.
+## Operating notes
+- Single test command: `npm test`; accessibility gate: `npm run a11y`
+- Nightly backup 02:00 GMT, reminders 05:00 GMT, weekly digest Mon 06:00 GMT,
+  RAG snapshot job — all GMT, all disable-able via `DISABLE_JOBS=true`
+- Resumption: `docs/execution/STATUS.md` + REQUIREMENT_TRACEABILITY.md +
+  DECISIONS.md rebuild full context from repository state alone

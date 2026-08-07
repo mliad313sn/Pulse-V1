@@ -19,12 +19,12 @@ const getHash = () => (passwordHashPromise ||= bcrypt.hash(TEST_PASSWORD, 12));
 
 async function initDb() {
   await migrate();
-  await query(`TRUNCATE attachments, project_baselines, change_requests, programs, portfolios, strategic_pillars, benefits, budget_lines, time_entries, resource_allocations, reminder_log, task_dependencies, tasks, workstreams, meeting_minutes_versions, notification_deliveries, capas, risks, sync_ops, raci_assignments, deliverables, stage_transitions, audit_log, rag_history, notifications, readiness_items, status_updates,
+  await query(`TRUNCATE report_dispatch_log, attachments, project_baselines, change_requests, programs, portfolios, strategic_pillars, benefits, budget_lines, time_entries, resource_allocations, reminder_log, task_dependencies, tasks, workstreams, meeting_minutes_versions, notification_deliveries, capas, risks, sync_ops, raci_assignments, deliverables, stage_transitions, audit_log, rag_history, notifications, readiness_items, status_updates,
     decisions, actions, meeting_items, meeting_attendees, meetings, roadblocks, milestones,
     project_sites, project_divisions, projects, users, sequences, sites, divisions, session,
     schema_migrations RESTART IDENTITY CASCADE`);
   // re-record migration (truncate wiped the ledger; schema itself persists)
-  await query(`INSERT INTO schema_migrations (name) VALUES ('001_init.sql'), ('002_ecosystem.sql'), ('003_risk_capa_channels.sql'), ('004_minutes_versions.sql'), ('005_lifecycle.sql'), ('006_workstreams_tasks.sql'), ('007_reminders.sql'), ('008_resources_time.sql'), ('009_finance_benefits.sql'), ('010_portfolio_hierarchy.sql'), ('011_baselines_changes.sql'), ('012_attachments.sql') ON CONFLICT DO NOTHING`);
+  await query(`INSERT INTO schema_migrations (name) VALUES ('001_init.sql'), ('002_ecosystem.sql'), ('003_risk_capa_channels.sql'), ('004_minutes_versions.sql'), ('005_lifecycle.sql'), ('006_workstreams_tasks.sql'), ('007_reminders.sql'), ('008_resources_time.sql'), ('009_finance_benefits.sql'), ('010_portfolio_hierarchy.sql'), ('011_baselines_changes.sql'), ('012_attachments.sql'), ('013_report_dispatch.sql') ON CONFLICT DO NOTHING`);
 }
 
 // Standard fixture: divisions, sites, one user per role + a second contributor

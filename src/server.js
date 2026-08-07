@@ -130,6 +130,7 @@ if (require.main === module) {
         require("./jobs/snapshot").start();
         require("./jobs/backup").start();
         require("./jobs/reminders").start();
+        require("./jobs/reportDispatch").start();
       }
     })
     .catch((err) => {
