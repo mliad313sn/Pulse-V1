@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **110/110 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **117/117 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -80,7 +80,16 @@ for unauthorized users, and site-restricted users export only their site.
 Deps: exceljs+pdfkit+pptxgenjs added (uuid overridden to ^11 — audit stays 0).
 
 ## Next executable work items (dependency order)
-12. **E30**: release qualification per §108 journeys.
+12. **E30**: release qualification per §108 journeys (LAST ITEM).
+
+## Completed: E24 attachments + E02 OIDC adapter (2026-08-07)
+Attachments: metadata in Postgres, bytes behind a storage-adapter contract
+(local disk now, S3 contract BLOCKED_EXTERNAL); streaming 25MB cap, type
+allowlist, hostile-filename sanitization, random never-exposed storage keys,
+versioning, sha256, entity linking, concealment-correct download/delete,
+Documents tab. OIDC: full Entra authorization-code adapter (discovery, state
+check, userinfo → local-user mapping; local deactivation wins; JIT off by
+default) tested against a mocked issuer; dormant until OIDC_* env configured.
 
 ## Completed: E15 realtime presenter sync (2026-08-07)
 WebSocket rooms with session-cookie-authenticated upgrade (HMAC verified,

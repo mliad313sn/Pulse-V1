@@ -52,6 +52,7 @@ export async function renderProject(container, projectId) {
           <button data-tab="updates">Updates &amp; Decisions</button>
           <button data-tab="deliverables">Deliverables</button>
           <button data-tab="changes">Changes</button>
+          <button data-tab="documents">Documents</button>
         </div>
         <div id="tab-content"></div>
       </div>
@@ -89,6 +90,7 @@ export async function renderProject(container, projectId) {
     updates: () => updatesTab(d, canFull, canPartial, reload),
     deliverables: () => deliverablesTab(d, canFull, reload),
     changes: () => changesTab(d, canFull, canPartial, reload),
+    documents: () => documentsTab(d, canFull, canPartial, reload),
   };
   container.querySelectorAll(".tabs button").forEach((b) => {
     b.classList.toggle("active", b.dataset.tab === activeTab);
@@ -701,6 +703,58 @@ function changesTab(d, canFull, canPartial, reload) {
         reload();
       },
     }));
+  });
+  return wrap;
+}
+
+// ===== E24 — Documents tab (attachments) =====
+function documentsTab(d, canFull, canPartial, reload) {
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `<div class="panel"><div class="panel-body muted">Loading documents…</div></div>`;
+  const pid = d.project.id;
+  const fmtSize = (b) => b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`;
+
+  api.get(`/api/v1/projects/${pid}/attachments`).then(({ attachments }) => {
+    wrap.innerHTML = `<div class="panel"><div class="panel-body">
+      ${canPartial ? `<div class="quickadd" style="align-items:center">
+        <input type="file" id="att-file" aria-label="Choose file">
+        <button class="btn navy small" id="att-upload">⬆ Upload</button>
+        <span class="muted">pdf, docx, xlsx, pptx, png, jpg, txt, csv, msg · max 25 MB</span></div>` : ""}
+      ${attachments.length ? `<table class="ms-list">
+        <tr><th>File</th><th>Size</th><th>V</th><th>Uploaded</th><th></th></tr>
+        ${attachments.map((a) => `<tr>
+          <td><a href="/api/v1/attachments/${a.id}" download><b>${esc(a.filename)}</b></a>
+            ${a.description ? `<br><span class="muted">${esc(a.description)}</span>` : ""}</td>
+          <td>${fmtSize(a.size_bytes)}</td><td>v${a.version}</td>
+          <td class="muted">${fmtDate(a.created_at)} · ${esc(a.uploaded_by || "")}</td>
+          <td>${canFull ? `<button class="btn small ghost-danger" data-del="${a.id}">✕</button>` : ""}</td>
+        </tr>`).join("")}</table>`
+        : emptyState("🗎", "No documents yet.", canPartial ? "Upload plans, sign-offs and evidence here." : "")}
+    </div></div>`;
+
+    const upBtn = wrap.querySelector("#att-upload");
+    if (upBtn) upBtn.onclick = async () => {
+      const input = wrap.querySelector("#att-file");
+      if (!input.files.length) { toast("Choose a file first", true); return; }
+      const fd = new FormData();
+      fd.append("file", input.files[0]);
+      try {
+        const res = await fetch(`/api/v1/projects/${pid}/attachments`, {
+          method: "POST", body: fd, headers: { "X-CSRF-Token": state.csrf },
+        });
+        const body = await res.json();
+        if (!res.ok) throw Object.assign(new Error(body.error || "Upload failed"), { status: res.status });
+        toast(`Uploaded ${body.attachment.filename} (v${body.attachment.version})`);
+        reload();
+      } catch (err) { showError(err); }
+    };
+    wrap.querySelectorAll("[data-del]").forEach((b) => b.onclick = async () => {
+      try {
+        await api.del(`/api/v1/attachments/${b.dataset.del}`);
+        toast("Document removed");
+        reload();
+      } catch (err) { showError(err); }
+    });
   });
   return wrap;
 }

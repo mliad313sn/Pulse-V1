@@ -14,9 +14,22 @@ credential/resource may sit here (SKILL.md §24).
 - Production config: `NOTIFY_CHANNEL_MODE=live`, `SMTP_URL=smtp://user:pass@relay:587`, sender identity policy.
 - Remaining local work when picked up: install nodemailer, implement send, add sink-relay test.
 
-## 3. Microsoft Entra ID SSO — NOT YET WRITTEN
-- Auth is an isolated module (`src/modules/auth/`) with session-based interface, designed for OIDC swap-in. The Entra adapter itself is future work (E02), so this is NOT claimable as BLOCKED_EXTERNAL yet.
-- Will need: tenant ID, client ID/secret, redirect URI registration.
+## 3. Microsoft Entra ID SSO — READY, needs tenant + app registration
+- Code: `src/modules/auth/oidc.js` + `/api/v1/auth/oidc/{login,callback}` — discovery,
+  state-checked authorization-code flow, userinfo claims, mapping to LOCAL users
+  (local deactivation always wins), refuse-unknown by default, `OIDC_AUTO_PROVISION=true`
+  for JIT VIEWER creation. Routes are dormant (404) until configured.
+- Tests: `tests/api/oidc.test.js` — full mocked flow against an injected fake issuer.
+- Production config: `OIDC_ISSUER=https://login.microsoftonline.com/<tenant>/v2.0`,
+  `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URI` (registered in the app).
+- Validation after credential: /api/v1/auth/oidc/login round-trip with a tenant user
+  mapped to an existing PULSE account; then deactivate that account and confirm 403.
+
+## 3b. S3-compatible attachment storage — CONTRACT READY, local disk in use
+- Code: `src/modules/attachments/storage.js` — adapter contract (put/get/remove);
+  local-disk adapter is the running implementation (`ATTACHMENTS_DIR`).
+- Remaining when object storage exists: implement the S3 adapter against the same
+  contract (endpoint/bucket/creds via env); no caller changes.
 
 ## 4. Production container registry / cloud runtime
 - docker-compose + Dockerfile are authored and config-validated; image pulls are blocked inside the build sandbox (proxy 403). First `docker compose up` on a networked host is the outstanding validation step.

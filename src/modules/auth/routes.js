@@ -44,6 +44,38 @@ router.post("/login", loginLimiter, async (req, res, next) => {
   }
 });
 
+// ===== E02 — Entra OIDC (enabled only when fully configured; else 404) =====
+const oidc = require("./oidc");
+
+router.get("/oidc/login", async (req, res, next) => {
+  try {
+    if (!oidc.enabled()) return res.status(404).json({ error: "SSO is not configured" });
+    const state = oidc.newState();
+    req.session.oidcState = state;
+    res.redirect(await oidc.authorizeUrl(state));
+  } catch (err) { next(err); }
+});
+
+router.get("/oidc/callback", async (req, res, next) => {
+  try {
+    if (!oidc.enabled()) return res.status(404).json({ error: "SSO is not configured" });
+    const { code, state } = req.query;
+    if (!code || !state || state !== req.session.oidcState) {
+      return res.status(400).json({ error: "Invalid SSO response (state mismatch)" });
+    }
+    delete req.session.oidcState;
+    const claims = await oidc.exchangeCode(String(code));
+    const mapped = await oidc.resolveUser(claims);
+    if (mapped.error) return res.status(403).json({ error: mapped.error });
+    await new Promise((resolve, reject) =>
+      req.session.regenerate((err) => (err ? reject(err) : resolve()))
+    );
+    req.session.userId = mapped.userId;
+    issueToken(req.session);
+    res.redirect("/"); // SPA bootstraps the session via /auth/me
+  } catch (err) { next(err); }
+});
+
 router.post("/logout", (req, res, next) => {
   req.session.destroy((err) => {
     if (err) return next(err);
