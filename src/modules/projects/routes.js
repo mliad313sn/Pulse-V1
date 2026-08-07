@@ -30,6 +30,8 @@ const projectBody = z.object({
   rag_override: z.enum(["G", "A", "R"]).nullable().optional(),
   rag_override_reason: z.string().max(1000).nullable().optional(),
   exec_commentary: z.string().max(5000).nullable().optional(),
+  portfolio_id: z.number().int().positive().nullable().optional(),
+  program_id: z.number().int().positive().nullable().optional(),
   divisions: z.array(z.object({
     division_id: z.number().int().positive(),
     role_in_project: z.enum(["LEAD", "ENGAGED", "CONSULTED"]),
@@ -43,6 +45,7 @@ router.get("/", async (req, res, next) => {
     const projects = await service.listPortfolio(req.user, {
       division: req.query.division, site: req.query.site, stage: req.query.stage,
       rag: req.query.rag, priority: req.query.priority, pm: req.query.pm,
+      portfolio: req.query.portfolio, program: req.query.program,
       q: req.query.q, includeClosed: req.query.includeClosed === "true",
     });
     res.json({ projects });

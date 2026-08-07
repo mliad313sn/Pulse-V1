@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **97/97 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **100/100 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -47,8 +47,18 @@ RAG trend, site health, overloaded people, and a finance block that is
 server-side masked (null) for anyone without ADMIN/finance_access — verified
 by leak-string assertion in finance.test §4. Frontend `#/exec` view wired.
 
+## Completed: E04 portfolio hierarchy (2026-08-07)
+Migration 010: strategic_pillars / portfolios / programs + projects.portfolio_id,
+program_id. Pillars are Admin config; portfolios/programs Admin+Division Lead;
+a project carrying a program must carry that program's portfolio (400 on
+mismatch, checked on create AND update). Wall filters ?portfolio=&program=.
+Rollups (health, red/amber counts, sites, divisions, finance, benefits) are
+computed per viewer with the same confidentiality/site-isolation predicate as
+the wall — confidential projects never inflate an unauthorized viewer's counts,
+finance summary masked without the flag. `#/portfolios` view with deep links,
+demo hierarchy seeded. Browser smoke clean.
+
 ## Next executable work items (dependency order)
-4. **E04 finish**: pillars/portfolios/programs entities + portfolio filter.
 8. **E28**: i18n string extraction (EN/FR) then axe automation.
 9. **E23**: server-side export service + PDF + seeded leak tests.
 10. **E15**: WebSocket presenter sync.

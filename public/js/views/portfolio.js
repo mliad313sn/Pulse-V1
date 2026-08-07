@@ -3,7 +3,7 @@ import { api, state } from "../lib/api.js";
 import { el, esc, fmtDate, daysUntil, ragDot, avatar, emptyState, effectiveRag, optionList, modal, toast } from "../lib/ui.js";
 import { exportGroupDeck } from "../lib/deck.js";
 
-const FILTERS = { division: "", site: "", stage: "", rag: "", priority: "", pm: "", q: "" };
+const FILTERS = { division: "", site: "", stage: "", rag: "", priority: "", pm: "", q: "", portfolio: "", program: "" };
 
 function kpiBanner(projects) {
   const eff = effectiveRag;
@@ -100,6 +100,13 @@ function newProjectModal(onDone) {
 
 export async function renderPortfolio(container) {
   const m = state.meta;
+  // Deep links from the Portfolios view: #/portfolio?portfolio=3 / ?program=5
+  const qIdx = location.hash.indexOf("?");
+  if (qIdx >= 0) {
+    const qs = new URLSearchParams(location.hash.slice(qIdx + 1));
+    FILTERS.portfolio = qs.get("portfolio") || "";
+    FILTERS.program = qs.get("program") || "";
+  }
   container.innerHTML = `
     <div class="page-head"><h1>Portfolio Wall</h1>
       <span class="sub">Every active project · KPI banner reflects active filters</span>
@@ -114,6 +121,7 @@ export async function renderPortfolio(container) {
       <select id="f-rag"><option value="">RAG — all</option>${["G", "A", "R"].map((r) => `<option ${FILTERS.rag === r ? "selected" : ""}>${r}</option>`).join("")}</select>
       <select id="f-priority"><option value="">Priority — all</option>${["P1", "P2", "P3"].map((p) => `<option ${FILTERS.priority === p ? "selected" : ""}>${p}</option>`).join("")}</select>
       <select id="f-pm">${optionList(m.users.filter((u) => u.role !== "VIEWER"), "id", (u) => u.name, FILTERS.pm, "PM — all")}</select>
+      ${FILTERS.portfolio || FILTERS.program ? `<span class="pill DONE">${FILTERS.program ? "Program" : "Portfolio"} filter on</span>` : ""}
       <button class="clear" id="f-clear">✕ Clear filters</button>
       <span style="flex:1"></span>
       <button class="btn primary" id="export-deck">⬇ Export deck (respects filters)</button>
@@ -137,7 +145,8 @@ export async function renderPortfolio(container) {
   }
   container.querySelector("#f-clear").onclick = () => {
     Object.keys(FILTERS).forEach((k) => (FILTERS[k] = ""));
-    renderPortfolio(container);
+    if (location.hash.includes("?")) location.hash = "#/portfolio"; // re-renders via router
+    else renderPortfolio(container);
   };
   const npBtn = container.querySelector("#new-project");
   if (npBtn) npBtn.onclick = () => newProjectModal(refresh);

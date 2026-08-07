@@ -199,6 +199,32 @@ async function seed(force = false) {
       description: "Confidential: consolidated IT cost dashboard for ExCo.",
     });
 
+    // ===== portfolio hierarchy (E04): pillar → portfolio → program → project =====
+    const pillarNet = (await c.query(
+      `INSERT INTO strategic_pillars (name, description, created_by) VALUES ($1,$2,$3) RETURNING id`,
+      ["Reliable Operations", "Network, site infrastructure and operational resilience", U.admin])).rows[0].id;
+    const pillarBiz = (await c.query(
+      `INSERT INTO strategic_pillars (name, description, created_by) VALUES ($1,$2,$3) RETURNING id`,
+      ["Business Enablement", "ERP, data and business partnering platforms", U.admin])).rows[0].id;
+    const pfInfra = (await c.query(
+      `INSERT INTO portfolios (title, objective, pillar_id, owner_user_id, created_by)
+       VALUES ($1,$2,$3,$4,$4) RETURNING id`,
+      ["Site Infrastructure", "Every mine site on resilient, standard IT foundations", pillarNet, U.admin])).rows[0].id;
+    const pfDigital = (await c.query(
+      `INSERT INTO portfolios (title, objective, pillar_id, owner_user_id, created_by)
+       VALUES ($1,$2,$3,$4,$4) RETURNING id`,
+      ["Digital Core", "One ERP and one data platform across the group", pillarBiz, U.admin])).rows[0].id;
+    const prgErp = (await c.query(
+      `INSERT INTO programs (title, objective, portfolio_id, created_by)
+       VALUES ($1,$2,$3,$4) RETURNING id`,
+      ["ERP Programme", "Upgrade the core then roll out site by site", pfDigital, U.admin])).rows[0].id;
+    await c.query(`UPDATE projects SET portfolio_id=$1 WHERE id = ANY($2::bigint[])`,
+      [pfInfra, [P.lan, P.wan, P.wifi, P.kgo]]);
+    await c.query(`UPDATE projects SET portfolio_id=$1, program_id=$2 WHERE id = ANY($3::bigint[])`,
+      [pfDigital, prgErp, [P.erp, P.mgoerp]]);
+    await c.query(`UPDATE projects SET portfolio_id=$1 WHERE id = ANY($2::bigint[])`,
+      [pfDigital, [P.lake, P.dash]]);
+
     // ===== milestones =====
     const mkMs = async (proj, title, type, owner, coOwner, site, due, status, doneDate, ts) => {
       const r = await c.query(

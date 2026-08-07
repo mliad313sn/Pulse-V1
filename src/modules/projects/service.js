@@ -5,6 +5,7 @@ const { badRequest, conflict, notFound, forbidden } = require("../../middleware/
 const rag = require("../rag/service");
 const notifications = require("../notifications/service");
 const gates = require("./gates");
+const portfolioHierarchy = require("../portfolio/service");
 
 // ===== code generation: PRJ-{YYYY}-{NNN} from sequences row locked FOR UPDATE =====
 async function nextProjectCode(client) {
@@ -66,18 +67,20 @@ const PROJECT_FIELDS = [
   "operating_status", "hold_reason", "cancel_reason",
   "priority", "start_date", "target_date", "actual_end_date", "budget_note",
   "roadmap_pillar", "confidential", "rag_override", "rag_override_reason", "exec_commentary",
+  "portfolio_id", "program_id",
 ];
 
 async function createProject(actor, input) {
   assertOverrideValid(input.rag_override, input.rag_override_reason);
   return withTransaction(async (client) => {
     await assertValidPM(client, input.project_manager_id);
+    await portfolioHierarchy.assertHierarchy(client, input.portfolio_id ?? null, input.program_id ?? null);
     const code = await nextProjectCode(client);
     const { rows } = await client.query(
       `INSERT INTO projects (code, title, description, lead_division_id, project_manager_id, sponsor,
          stage, priority, start_date, target_date, budget_note, roadmap_pillar, confidential,
-         rag_override, rag_override_reason, exec_commentary, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+         rag_override, rag_override_reason, exec_commentary, portfolio_id, program_id, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
        RETURNING *`,
       [
         code, input.title, input.description || null, input.lead_division_id,
@@ -86,7 +89,8 @@ async function createProject(actor, input) {
         input.start_date || null, input.target_date || null,
         input.budget_note || null, input.roadmap_pillar || null,
         input.confidential === true, input.rag_override || null,
-        input.rag_override_reason || null, input.exec_commentary || null, actor.id,
+        input.rag_override_reason || null, input.exec_commentary || null,
+        input.portfolio_id || null, input.program_id || null, actor.id,
       ]
     );
     const project = rows[0];
@@ -141,6 +145,9 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
   if (patch.project_manager_id !== undefined && patch.project_manager_id !== project.project_manager_id) {
     await assertValidPM({ query }, patch.project_manager_id);
   }
+  if (patch.portfolio_id !== undefined || patch.program_id !== undefined) {
+    await portfolioHierarchy.assertHierarchy({ query }, after.portfolio_id ?? null, after.program_id ?? null);
+  }
 
   // Operating-status control (plan §131-132): hold/cancel need reasons; cancelled is terminal
   if (patch.operating_status !== undefined && patch.operating_status !== project.operating_status) {
@@ -170,7 +177,7 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
          stage=$8, priority=$9, start_date=$10, target_date=$11, actual_end_date=$12,
          budget_note=$13, roadmap_pillar=$14, confidential=$15, rag_override=$16,
          rag_override_reason=$17, exec_commentary=$18, operating_status=$19,
-         hold_reason=$20, cancel_reason=$21, updated_at=now()
+         hold_reason=$20, cancel_reason=$21, portfolio_id=$22, program_id=$23, updated_at=now()
        WHERE id=$1 AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $2::timestamptz) AND deleted_at IS NULL
        RETURNING *`,
       [
@@ -180,6 +187,7 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
         after.actual_end_date, after.budget_note, after.roadmap_pillar, after.confidential,
         after.rag_override, after.rag_override_reason, after.exec_commentary,
         after.operating_status, after.hold_reason, after.cancel_reason,
+        after.portfolio_id, after.program_id,
       ]
     );
     if (res.rows.length === 0) {
@@ -299,6 +307,8 @@ async function listPortfolio(user, filters = {}) {
   if (filters.rag) { params.push(filters.rag); where.push(`coalesce(p.rag_override, p.rag_computed) = $${params.length}`); }
   if (filters.priority) { params.push(filters.priority); where.push(`p.priority = $${params.length}`); }
   if (filters.pm) { params.push(Number(filters.pm)); where.push(`p.project_manager_id = $${params.length}`); }
+  if (filters.portfolio) { params.push(Number(filters.portfolio)); where.push(`p.portfolio_id = $${params.length}`); }
+  if (filters.program) { params.push(Number(filters.program)); where.push(`p.program_id = $${params.length}`); }
   if (filters.q) {
     params.push(`%${filters.q}%`);
     where.push(`(p.title ILIKE $${params.length} OR p.code ILIKE $${params.length})`);
@@ -310,6 +320,7 @@ async function listPortfolio(user, filters = {}) {
             p.rag_computed, p.rag_override, p.rag_override_reason, p.rag_signals_json,
             p.progress_pct, p.target_date, p.last_activity_at, p.updated_at, p.operating_status,
             ld.code AS lead_division_code,
+            p.portfolio_id, p.program_id, pfh.title AS portfolio_title, prh.title AS program_title,
             pm.id AS pm_id, pm.name AS pm_name, pm.role AS pm_role,
             (SELECT json_agg(json_build_object('code', d.code, 'role', pd.role_in_project) ORDER BY pd.role_in_project)
                FROM project_divisions pd JOIN divisions d ON d.id = pd.division_id
@@ -335,6 +346,8 @@ async function listPortfolio(user, filters = {}) {
                 AND a.due_date IS NOT NULL AND a.due_date < (now() AT TIME ZONE 'utc')::date) AS overdue_actions
        FROM projects p
        JOIN divisions ld ON ld.id = p.lead_division_id
+       LEFT JOIN portfolios pfh ON pfh.id = p.portfolio_id
+       LEFT JOIN programs prh ON prh.id = p.program_id
        LEFT JOIN users pm ON pm.id = p.project_manager_id
       WHERE ${where.join(" AND ")}
       ORDER BY CASE coalesce(p.rag_override, p.rag_computed) WHEN 'R' THEN 0 WHEN 'A' THEN 1 ELSE 2 END,
