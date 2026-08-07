@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **154/154 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **156/156 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -116,8 +116,12 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
   decisions; PROMOTED scenarios spawn PENDING change requests per move —
   humans still approve each one. REMAINING: resource-constraint dimension in
   the optimizer; scenario UI (P8/P11).
-- **P7 Decision graph**: strategy→…→outcome traceability; why/what-changed/
-  who-approved/blast-radius queries.
+- **P7 Decision graph — DONE (core)**: GET /projects/:id/graph assembles
+  demand origin → objectives → portfolio/pillar → gate approvals → change
+  requests → baselines → decisions → risks → CAPAs → benefits → downstream
+  blast radius as nodes+edges, plus plain answers (why / approvals / last
+  changes / impacted); concealment preserved (hidden downstream counted,
+  never named). REMAINING: graph UI visualization (P11).
 - **P8 Meeting Mode 2.0**: live scenario simulation in Steering meetings;
   decision→CR conversion; immutable meeting evidence.
 - **P9 Intelligence**: explainable copilot/predictions/anomalies (Claude API

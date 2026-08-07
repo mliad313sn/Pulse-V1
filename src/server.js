@@ -89,6 +89,7 @@ function createApp(options = {}) {
   app.use("/api/v1", require("./modules/strategy/routes"));
   app.use("/api/v1", require("./modules/templates/routes"));
   app.use("/api/v1", require("./modules/scenarios/routes"));
+  app.use("/api/v1", require("./modules/graph/routes"));
   app.use("/api/v1/sync", require("./modules/sync/routes").router);
 
   // Reference data for pickers (any authenticated user)
