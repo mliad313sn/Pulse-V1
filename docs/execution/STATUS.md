@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **189/189 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **201/201 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -94,9 +94,19 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
   cross-project dependencies + concealment-safe blast radius, 5 schedule
   quality checks (migration 019). CPM full semantics from P0 — and a REAL BUG
   FIXED: kernel read dependency_type but the DB column is dep_type, so live
-  plans computed FS-only; now honors both. REMAINING: working calendars +
-  exceptions, date constraints (MUST_START_ON etc.), resource leveling,
-  Gantt visual (P11).
+  plans computed FS-only; now honors both. COMPLETED (migration 026): working
+  calendars with two-way exceptions (holidays AND worked recovery days),
+  Admin-curated because a calendar change moves everyone's dates; the CPM now
+  runs in WORKING days and returns real dates that never land on a weekend;
+  work content is measured against the working WEEK so a mid-window holiday
+  pushes the chain out instead of silently deleting a day of work; date
+  constraints (START_NO_EARLIER_THAN / FINISH_NO_LATER_THAN / MUST_START_ON /
+  MUST_FINISH_ON) with unsatisfiable ones reported as named violations and
+  NEGATIVE float; resource leveling that finds double-bookings and proposes a
+  shift within float without ever moving anyone's dates. Bug found and fixed:
+  pg returns DATE as a JS Date, so the exception lookup key was
+  "Mon Jun 01" — calendar exceptions were being silently ignored.
+  REMAINING: Gantt visual (P11).
 - **P3 Capacity intelligence — DONE (core)**: migration 024 adds a skills
   catalogue with per-person proficiency/certification (self-service for your
   own, Admin/DL for others), allocation TYPE (PROJECT/BAU/LEAVE — project_id

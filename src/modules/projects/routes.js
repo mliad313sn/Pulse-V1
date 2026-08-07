@@ -33,6 +33,7 @@ const projectBody = z.object({
   portfolio_id: z.number().int().positive().nullable().optional(),
   program_id: z.number().int().positive().nullable().optional(),
   governance: z.enum(["LITE", "STANDARD"]).optional(),
+  calendar_id: z.number().int().positive().nullable().optional(),
   progress_method: z.enum(["MILESTONE", "TASK", "EFFORT", "COST", "PHYSICAL"]).optional(),
   progress_manual: z.number().int().min(0).max(100).nullable().optional(),
   progress_manual_note: z.string().max(1000).nullable().optional(),

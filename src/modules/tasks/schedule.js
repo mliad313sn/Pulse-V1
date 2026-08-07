@@ -3,8 +3,22 @@
 // Model: FS dependencies with lag drive the forward pass; durations come from
 // planned dates (inclusive days) with a 1-day floor. No I/O — unit-testable.
 
-function durationDays(task) {
+const cal = require("./calendar");
+
+// Duration = how much WORK a task holds, measured in working days.
+//
+// Deliberately computed against the calendar's normal working WEEK and NOT its
+// exceptions. Work content must not depend on where a holiday happens to fall:
+// a three-day task stays three days of work when a public holiday lands in the
+// middle — the holiday pushes the finish out (handled by the offset→date
+// mapping, which does honour exceptions) instead of silently deleting a day of
+// work. Without a calendar this keeps the original calendar-day behaviour.
+function durationDays(task, calendar) {
   if (task.planned_start && task.planned_finish) {
+    if (calendar) {
+      const weekOnly = { ...cal.normalize(calendar), exceptions: new Map() };
+      return Math.max(cal.workingDaysBetween(task.planned_start, task.planned_finish, weekOnly), 1);
+    }
     const d = Math.round((new Date(task.planned_finish) - new Date(task.planned_start)) / 86400000) + 1;
     return Math.max(d, 1);
   }
@@ -60,16 +74,32 @@ function wouldCycle(tasks, deps, predecessorId, successorId) {
 // near-critical (0 < slack <= NEAR_CRITICAL_DAYS) sets.
 const NEAR_CRITICAL_DAYS = 2;
 
-function criticalPath(tasksIn, depsIn) {
+// options: { calendar, projectStart } — with both supplied the pass runs in
+// working days and returns real dates alongside the offsets; date constraints
+// (MUST_START_ON, START_NO_EARLIER_THAN, FINISH_NO_LATER_THAN, …) are honoured
+// and any that cannot be met is reported rather than silently ignored.
+function criticalPath(tasksIn, depsIn, options = {}) {
+  const calendar = options.calendar || null;
   const tasks = tasksIn.filter((t) => t.status !== "CANCELLED");
   const deps = depsIn.filter((d) => !d.deleted_at);
   const { order, preds } = topoSort(tasks, deps);
   const byId = new Map(tasks.map((t) => [t.id, t]));
+  const violations = [];
+
+  // The origin all offsets are measured from.
+  const origin = options.projectStart
+    || tasks.map((t) => t.planned_start).filter(Boolean).sort()[0]
+    || null;
+  const constraintOffset = (t) => {
+    if (!calendar || !origin || t.constraint_type === "ASAP" || !t.constraint_date) return null;
+    return cal.offsetOf(t.constraint_date, origin, calendar);
+  };
 
   // forward pass — earliest start/finish
   const ES = new Map(), EF = new Map();
   for (const id of order) {
-    const dur = durationDays(byId.get(id));
+    const t = byId.get(id);
+    const dur = durationDays(t, calendar);
     let es = 0;
     for (const d of preds.get(id)) {
       const p = d.predecessor_task_id, lag = d.lag_days || 0;
@@ -82,6 +112,24 @@ function criticalPath(tasksIn, depsIn) {
       es = Math.max(es, req);
     }
     es = Math.max(es, 0);
+
+    // date constraints applied to the earliest dates
+    const c = constraintOffset(t);
+    if (c !== null) {
+      const type = t.constraint_type;
+      if (type === "START_NO_EARLIER_THAN") {
+        es = Math.max(es, c);
+      } else if (type === "MUST_START_ON") {
+        if (es > c) {
+          violations.push({ task_id: id, constraint: type, date: String(t.constraint_date).slice(0, 10),
+            detail: `"${t.title}" must start on ${String(t.constraint_date).slice(0, 10)} but its predecessors ` +
+              `cannot release it until ${cal.iso(cal.addWorkingDays(origin, es, calendar))}` });
+        }
+        es = c; // the constraint is the plan of record; the violation is reported
+      } else if (type === "MUST_FINISH_ON") {
+        es = Math.max(0, c - dur + 1);
+      }
+    }
     ES.set(id, es);
     EF.set(id, es + dur);
   }
@@ -96,8 +144,19 @@ function criticalPath(tasksIn, depsIn) {
   }
   const LF = new Map(), LS = new Map();
   for (const id of [...order].reverse()) {
-    const dur = durationDays(byId.get(id));
+    const t = byId.get(id);
+    const dur = durationDays(t, calendar);
     let lf = projectLength;
+    // A deadline caps the latest finish — which is how a schedule earns
+    // NEGATIVE float, the honest signal that the plan does not fit.
+    const c = constraintOffset(t);
+    if (c !== null) {
+      if (t.constraint_type === "FINISH_NO_LATER_THAN" || t.constraint_type === "MUST_FINISH_ON") {
+        lf = Math.min(lf, c);
+      } else if (t.constraint_type === "MUST_START_ON") {
+        lf = Math.min(lf, c + dur);
+      }
+    }
     for (const d of succs.get(id)) {
       const s = d.successor_task_id, lag = d.lag_days || 0;
       const type = d.dep_type || d.dependency_type || "FS";
@@ -127,17 +186,95 @@ function criticalPath(tasksIn, depsIn) {
       else gap = ES.get(s) - (EF.get(id) + lag);
       free = Math.min(free, gap);
     }
-    result.set(id, {
+    const entry = {
       earlyStart: ES.get(id), earlyFinish: EF.get(id),
       lateStart: LS.get(id), lateFinish: LF.get(id),
       slack, freeFloat: Math.max(0, free),
       critical: slack === 0,
       nearCritical: slack > 0 && slack <= NEAR_CRITICAL_DAYS,
-    });
+      // negative float = the deadline cannot be met on the current logic
+      behindDeadline: slack < 0,
+    };
+    if (calendar && origin) {
+      // offsets are inclusive working-day indices: a 1-day task starting at
+      // offset n finishes on the same working day, hence the -1.
+      entry.earlyStartDate = cal.iso(cal.addWorkingDays(origin, entry.earlyStart, calendar));
+      entry.earlyFinishDate = cal.iso(cal.addWorkingDays(origin, Math.max(0, entry.earlyFinish - 1), calendar));
+      entry.lateStartDate = cal.iso(cal.addWorkingDays(origin, Math.max(0, entry.lateStart), calendar));
+      entry.lateFinishDate = cal.iso(cal.addWorkingDays(origin, Math.max(0, entry.lateFinish - 1), calendar));
+    }
+    result.set(id, entry);
+    if (entry.behindDeadline) {
+      const t = byId.get(id);
+      violations.push({
+        task_id: id, constraint: t.constraint_type || "deadline",
+        date: t.constraint_date ? String(t.constraint_date).slice(0, 10) : null,
+        detail: `"${t.title}" is ${Math.abs(slack)} working day(s) beyond the latest finish its deadline allows`,
+      });
+    }
   }
   const criticalIds = order.filter((id) => result.get(id).critical);
   const nearCriticalIds = order.filter((id) => result.get(id).nearCritical);
-  return { projectLength, tasks: result, criticalIds, nearCriticalIds };
+  return {
+    projectLength, tasks: result, criticalIds, nearCriticalIds, violations,
+    calendarApplied: Boolean(calendar),
+    origin: origin ? cal.iso(cal.toUTC(origin)) : null,
+  };
+}
+
+// SPM Phase 2 — resource leveling. Finds days where one person's concurrent
+// task assignments exceed a full day, and proposes a shift that uses existing
+// float. It NEVER moves anything: a planner decides, because a machine cannot
+// know which piece of work actually matters this week.
+function levelResources(tasks, deps, options = {}) {
+  const calendar = options.calendar || null;
+  const cp = criticalPath(tasks, deps, options);
+  const active = tasks.filter((t) =>
+    t.status !== "CANCELLED" && t.status !== "DONE" && t.owner_user_id && cp.tasks.has(t.id));
+
+  const byOwner = new Map();
+  for (const t of active) {
+    if (!byOwner.has(t.owner_user_id)) byOwner.set(t.owner_user_id, []);
+    byOwner.get(t.owner_user_id).push(t);
+  }
+
+  const conflicts = [];
+  for (const [ownerId, owned] of byOwner) {
+    if (owned.length < 2) continue;
+    for (let i = 0; i < owned.length; i++) {
+      for (let j = i + 1; j < owned.length; j++) {
+        const a = cp.tasks.get(owned[i].id), b = cp.tasks.get(owned[j].id);
+        const overlap = Math.min(a.earlyFinish, b.earlyFinish) - Math.max(a.earlyStart, b.earlyStart);
+        if (overlap <= 0) continue;
+
+        // Move the one with more float; if both are critical, say so plainly.
+        const [movable, anchor, movableTask] = a.slack >= b.slack
+          ? [a, b, owned[i]] : [b, a, owned[j]];
+        const shift = anchor.earlyFinish - movable.earlyStart;
+        const fits = movable.slack >= shift;
+        conflicts.push({
+          user_id: ownerId,
+          tasks: [owned[i].id, owned[j].id],
+          overlap_days: overlap,
+          suggestion: fits
+            ? `Delay "${movableTask.title}" by ${shift} working day(s) — it has ${movable.slack} day(s) of float, so nothing else moves`
+            : movable.slack <= 0 && anchor.slack <= 0
+              ? `Both tasks are on the critical path — this needs a second person or a scope decision, not a date change`
+              : `Delaying "${movableTask.title}" by ${shift} day(s) exceeds its ${movable.slack} day(s) of float and would push the end date`,
+          resolvable_within_float: fits,
+          shift_days: shift,
+          ...(calendar && cp.origin ? {
+            overlap_from: cal.iso(cal.addWorkingDays(cp.origin, Math.max(a.earlyStart, b.earlyStart), calendar)),
+          } : {}),
+        });
+      }
+    }
+  }
+  return {
+    conflicts: conflicts.sort((x, y) => y.overlap_days - x.overlap_days),
+    checkedPeople: byOwner.size,
+    note: "Suggestions only — Pulse never moves a colleague's dates automatically",
+  };
 }
 
 // Phase 2 — schedule quality checks: pure findings a planner acts on.
@@ -216,4 +353,7 @@ function rollupSummaries(tasks) {
   return rollup;
 }
 
-module.exports = { topoSort, wouldCycle, criticalPath, durationDays, qualityChecks, rollupSummaries };
+module.exports = {
+  topoSort, wouldCycle, criticalPath, durationDays, qualityChecks, rollupSummaries,
+  levelResources,
+};

@@ -15,6 +15,7 @@ const TASK_FIELDS = [
   "title", "description", "workstream_id", "milestone_id", "owner_user_id",
   "planned_start", "planned_finish", "actual_start", "actual_finish",
   "estimated_hours", "actual_hours", "remaining_hours", "parent_task_id", "priority", "status",
+  "constraint_type", "constraint_date",
 ];
 
 async function createWorkstream(actor, projectAccess, input) {
@@ -143,13 +144,15 @@ async function updateTask(actor, id, patch, expectedUpdatedAt) {
       `UPDATE tasks SET title=$3, description=$4, workstream_id=$5, milestone_id=$6, owner_user_id=$7,
               planned_start=$8, planned_finish=$9, actual_start=$10, actual_finish=$11,
               estimated_hours=$12, actual_hours=$13, remaining_hours=$14, parent_task_id=$15,
-              priority=$16, status=$17, updated_at=now()
+              priority=$16, status=$17, constraint_type=$18, constraint_date=$19, updated_at=now()
         WHERE id=$1 AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $2::timestamptz)
           AND deleted_at IS NULL RETURNING *`,
       [id, expectedUpdatedAt, after.title, after.description, after.workstream_id, after.milestone_id,
        after.owner_user_id, after.planned_start, after.planned_finish, after.actual_start,
        after.actual_finish, after.estimated_hours, after.actual_hours, after.remaining_hours,
-       after.parent_task_id, after.priority, after.status]
+       after.parent_task_id, after.priority, after.status,
+       after.constraint_type || "ASAP",
+       (after.constraint_type && after.constraint_type !== "ASAP") ? after.constraint_date : null]
     );
     if (!res.rows.length) {
       const cur = await client.query(`SELECT * FROM tasks WHERE id=$1 AND deleted_at IS NULL`, [id]);
@@ -217,11 +220,27 @@ async function getPlan(projectAccess) {
             JOIN tasks t ON t.id = td.predecessor_task_id
            WHERE t.project_id = $1 AND td.deleted_at IS NULL AND t.deleted_at IS NULL`, [pid]),
   ]);
+  // SPM P2 — schedule in WORKING days against the project's calendar
+  const calendar = await loadProjectCalendar(projectAccess.project);
+  const options = { calendar, projectStart: projectAccess.project.start_date || undefined };
+
   let cp = { projectLength: 0, criticalIds: [] };
+  let leveling = null;
   try {
-    const res = schedule.criticalPath(tasks.rows, deps.rows);
-    cp = { projectLength: res.projectLength, criticalIds: res.criticalIds,
-           slack: Object.fromEntries([...res.tasks].map(([id, v]) => [id, v.slack])) };
+    const res = schedule.criticalPath(tasks.rows, deps.rows, options);
+    cp = {
+      projectLength: res.projectLength, criticalIds: res.criticalIds,
+      nearCriticalIds: res.nearCriticalIds,
+      slack: Object.fromEntries([...res.tasks].map(([id, v]) => [id, v.slack])),
+      dates: Object.fromEntries([...res.tasks].map(([id, v]) => [id, {
+        earlyStart: v.earlyStartDate || null, earlyFinish: v.earlyFinishDate || null,
+        lateStart: v.lateStartDate || null, lateFinish: v.lateFinishDate || null,
+        freeFloat: v.freeFloat, behindDeadline: v.behindDeadline,
+      }])),
+      violations: res.violations,
+      calendarApplied: res.calendarApplied,
+    };
+    leveling = schedule.levelResources(tasks.rows, deps.rows, options);
   } catch (err) {
     cp.error = err.message; // cycle already prevented at write time; belt and braces
   }
@@ -229,8 +248,25 @@ async function getPlan(projectAccess) {
   const quality = schedule.qualityChecks(tasks.rows, deps.rows);
   return {
     workstreams: ws.rows, tasks: tasks.rows, dependencies: deps.rows, criticalPath: cp,
-    summaries: Object.fromEntries(rollups), quality,
+    summaries: Object.fromEntries(rollups), quality, leveling,
+    calendar: calendar ? { id: calendar.id, name: calendar.name,
+      working_days: calendar.working_days, hours_per_day: calendar.hours_per_day } : null,
   };
+}
+
+// The project's calendar, or the deployment default. Exceptions come with it
+// so the scheduler never has to go back to the database mid-pass.
+async function loadProjectCalendar(project) {
+  const { rows } = await query(
+    `SELECT * FROM calendars
+      WHERE deleted_at IS NULL AND (id = $1 OR ($1::bigint IS NULL AND is_default))
+      ORDER BY (id = $1) DESC LIMIT 1`, [project.calendar_id || null]);
+  if (!rows.length) return null;
+  const calendar = rows[0];
+  const { rows: ex } = await query(
+    `SELECT exception_date, working FROM calendar_exceptions WHERE calendar_id = $1`, [calendar.id]);
+  calendar.exceptions = ex;
+  return calendar;
 }
 
 // ===== Phase 2: WBS parent validation (same project, no self/descendant loops)
@@ -362,5 +398,5 @@ module.exports = {
   createWorkstream, updateWorkstream, createTask, updateTask,
   addDependency, removeDependency, getPlan,
   assertValidParent, captureTaskBaseline, planVariance,
-  addProjectDependency, blastRadius,
+  addProjectDependency, blastRadius, loadProjectCalendar,
 };

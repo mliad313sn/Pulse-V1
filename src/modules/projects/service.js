@@ -84,7 +84,7 @@ const PROJECT_FIELDS = [
   "priority", "start_date", "target_date", "actual_end_date", "budget_note",
   "roadmap_pillar", "confidential", "rag_override", "rag_override_reason", "exec_commentary",
   "portfolio_id", "program_id", "governance",
-  "progress_method", "progress_manual", "progress_manual_note",
+  "progress_method", "progress_manual", "progress_manual_note", "calendar_id",
 ];
 
 async function createProject(actor, input) {
@@ -219,7 +219,7 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
          rag_override_reason=$17, exec_commentary=$18, operating_status=$19,
          hold_reason=$20, cancel_reason=$21, portfolio_id=$22, program_id=$23,
          governance=$24, custom_json=$25, progress_method=$26,
-         progress_manual=$27, progress_manual_note=$28, updated_at=now()
+         progress_manual=$27, progress_manual_note=$28, calendar_id=$29, updated_at=now()
        WHERE id=$1 AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $2::timestamptz) AND deleted_at IS NULL
        RETURNING *`,
       [
@@ -232,7 +232,7 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
         after.portfolio_id, after.program_id, after.governance,
         JSON.stringify(after.custom_json || {}),
         after.progress_method || "MILESTONE", after.progress_manual ?? null,
-        after.progress_manual_note || null,
+        after.progress_manual_note || null, after.calendar_id ?? null,
       ]
     );
     if (res.rows.length === 0) {

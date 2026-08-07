@@ -34,6 +34,9 @@ const taskBody = z.object({
   actual_hours: z.number().min(0).max(10000).nullable().optional(),
   priority: z.enum(["P1", "P2", "P3"]).optional(),
   status: z.enum(["NOT_STARTED", "IN_PROGRESS", "BLOCKED", "DONE", "CANCELLED"]).optional(),
+  constraint_type: z.enum(["ASAP", "START_NO_EARLIER_THAN", "FINISH_NO_LATER_THAN",
+    "MUST_START_ON", "MUST_FINISH_ON"]).optional(),
+  constraint_date: dateStr,
 });
 
 router.get("/projects/:projectId/plan", withProjectAccess(), async (req, res, next) => {
