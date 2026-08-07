@@ -26,7 +26,7 @@ Evidence = test file(s) unless noted. Updated: 2026-08-07.
 | E18 Benefits | §43 | NOT_STARTED | — | — |
 | E19 Notifications | §52 | PARTIAL | 7 in-app types incl. SYNC_HALTED, bell, deep links | meetings.test. Gap: dedupe keys, reminder schedule (T-14…T+7), preferences |
 | E20 Email/Teams | §53 | PARTIAL/BLOCKED_EXTERNAL | channel dispatcher + delivery ledger + local sink + real Teams webhook adapter (tested via injected fetch); SMTP contract documented | risk-capa.test §5. Needs: TEAMS_WEBHOOK_URL, SMTP relay (see EXTERNAL_DEPENDENCIES.md) |
-| E21 Scheduling/workers | §54,55,81 | PARTIAL | cron: weekly snapshot, daily verified backup | reports.test snapshot. Gap: reminder engine, scheduled report dispatch, durable queue |
+| E21 Scheduling/workers | §54,55,81 | PARTIAL | cron: weekly snapshot, daily verified backup, daily reminder/escalation engine (T-14/T-7/T-2/T0/T+1/T+7, reminder_log idempotency, T+7 PM escalation, hold/cancel exclusion) | reminders.test (2), reports.test. Gap: scheduled report dispatch, durable queue |
 | E22 Dashboards | §44–48 | PARTIAL | Portfolio Wall (filter-aware KPI), Site Lens, My Work, War Room, reports+trends | reports.test, browser smoke. Gap: Executive Command Center view, KPI drill-through links |
 | E23 Exports | §56,91 | PARTIAL | client-side PPTX (group/site/project, filter+authz parity by construction: exports render only server-authorized data), XLSX | validated via python-pptx + PDF render. Gap: server-side export service, PDF, semantic leak tests |
 | E24 Search/documents | §50,51 | PARTIAL | scoped search (projects+roadblocks, confidentiality/site safe) | permissions/ecosystem/reports tests. Gap: more entities in search, attachments (NOT_STARTED) |

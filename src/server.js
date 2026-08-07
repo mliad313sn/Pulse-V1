@@ -121,6 +121,7 @@ if (require.main === module) {
       if (process.env.DISABLE_JOBS !== "true") {
         require("./jobs/snapshot").start();
         require("./jobs/backup").start();
+        require("./jobs/reminders").start();
       }
     })
     .catch((err) => {
