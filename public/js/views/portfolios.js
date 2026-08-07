@@ -7,6 +7,7 @@ const HEALTH_PILL = { G: "DONE", A: "MAJOR", R: "SLIPPED" };
 export async function renderPortfolios(container) {
   const d = await api.get("/api/v1/portfolios");
   const pillars = await api.get("/api/v1/pillars");
+  const strat = await api.get("/api/v1/objectives");
   const byPillar = new Map();
   for (const pf of d.portfolios) {
     const key = pf.pillar_name || "Unassigned pillar";
@@ -17,6 +18,25 @@ export async function renderPortfolios(container) {
   container.innerHTML = `
     <div class="page-head"><h1>Portfolios</h1>
       <span class="sub">Strategic pillars → portfolios → programs — health rolled up from the projects you can see</span></div>
+    ${strat.objectives.length ? `
+    <h2 class="section-title">Objectives & key results</h2>
+    <div class="report-grid">
+      ${strat.objectives.map((o) => `
+      <div class="report-card">
+        <h3>${esc(o.title)} <span class="muted" style="font-weight:400">· ${esc(o.period)}</span></h3>
+        ${o.pillar_name ? `<span class="chip div">${esc(o.pillar_name)}</span>` : ""}
+        ${o.progress_pct != null ? `
+          <div class="pline" style="display:flex;align-items:center;gap:8px;margin:.4rem 0">
+            <div class="progress" style="flex:1"><i style="width:${o.progress_pct}%"></i></div>
+            <b>${o.progress_pct}%</b></div>` : '<div class="muted" style="margin:.4rem 0">No measurements yet</div>'}
+        <ul class="simple-list" style="font-size:.85rem">
+          ${o.key_results.map((kr) => `<li>${kr.progress.pct != null ? `<b>${kr.progress.pct}%</b>` : "—"}
+            ${esc(kr.title)} <span class="muted">${esc(kr.progress.explanation)}</span></li>`).join("")}
+        </ul>
+        ${o.projects.length ? `<div class="muted" style="margin-top:.3rem">Served by:
+          ${o.projects.map((p) => `<a href="#/projects/${p.id}"><span class="chip div">${esc(p.code)}</span></a>`).join(" ")}</div>` : ""}
+      </div>`).join("")}
+    </div>` : ""}
     ${!d.portfolios.length ? emptyState("▦", "No portfolios yet. An Admin or Division Lead can create them via the API or admin tools.") :
       [...byPillar.entries()].map(([pillarName, pfs]) => `
       <h2 class="section-title">${esc(pillarName)}</h2>
