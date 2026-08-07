@@ -11,6 +11,7 @@ import { renderAdmin } from "./views/admin.js";
 import { renderWarRoom } from "./views/warRoom.js";
 import { renderExecutive } from "./views/executive.js";
 import { renderPortfolios } from "./views/portfolios.js";
+import { renderDemand } from "./views/demand.js";
 import { flush, countQueued, isBlocked, retryAfterReview, discardHead } from "./lib/syncQueue.js";
 import { t, lang, setLang, LANGS } from "./lib/i18n.js";
 
@@ -102,6 +103,7 @@ function shell(active, contentNode) {
   const nav = [
     ["portfolio", `▦ ${t("nav.portfolio")}`, "#/portfolio"],
     ["portfolios", `▤ ${t("nav.portfolios")}`, "#/portfolios"],
+    ["demand", "◇ Demand", "#/demand"],
     ["meetings", `▶ ${t("nav.meetings")}`, "#/meetings"],
     ["sites", `◎ ${t("nav.sites")}`, "#/sites"],
     ["my", `☑ ${t("nav.my")}`, "#/my"],
@@ -263,6 +265,7 @@ function shell(active, contentNode) {
 // ===== router =====
 const routes = [
   [/^#\/portfolios/, "portfolios", renderPortfolios],
+  [/^#\/demand/, "demand", renderDemand],
   [/^#\/portfolio(?!s)/, "portfolio", renderPortfolio],
   [/^#\/projects\/(\d+)/, "portfolio", renderProject],
   [/^#\/meetings\/(\d+)/, "meetings", renderMeetingLive],
