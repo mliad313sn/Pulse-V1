@@ -11,7 +11,7 @@ async function recomputeProject(db, projectId, actingUserId) {
   const q = (text, params) => db.query(text, params);
 
   const projRes = await q(
-    `SELECT id, stage, created_at, updated_at, rag_computed, rag_override, project_manager_id, lead_division_id, title, code
+    `SELECT id, stage, operating_status, created_at, updated_at, rag_computed, rag_override, project_manager_id, lead_division_id, title, code
        FROM projects WHERE id = $1 AND deleted_at IS NULL`,
     [projectId]
   );
@@ -42,6 +42,7 @@ async function recomputeProject(db, projectId, actingUserId) {
   const lastActivityAt = actRes.rows[0].last || project.created_at;
   const { rag, signals, progressPct } = computeRag({
     stage: project.stage,
+    operatingStatus: project.operating_status,
     milestones: msRes.rows.map((m) => ({ status: m.status, dueDate: m.due_date })),
     roadblocks: rbRes.rows,
     actions: acRes.rows.map((a) => ({ status: a.status, dueDate: a.due_date })),

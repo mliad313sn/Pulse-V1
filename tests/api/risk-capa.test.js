@@ -106,7 +106,7 @@ test("roadblock reopen: resolved cannot be escalated, reopen requires a reason, 
 test("agenda rules 7-8: gate-awaiting and overdue-CAPA projects surface on the auto-agenda", async () => {
   // a DESIGN project with a milestone = waiting on the Steering gate
   const gated = (await infLead.post("/api/v1/projects").send({
-    title: "Awaiting steering", lead_division_id: F.D.INF, stage: "DESIGN",
+    title: "Awaiting steering", lead_division_id: F.D.INF, stage: "PLANNING",
     description: "d", sponsor: "s", target_date: daysAhead(60),
   })).body.project;
   await infLead.post(`/api/v1/projects/${gated.id}/milestones`).send({ title: "Plan baseline", due_date: daysAhead(30) });
@@ -124,7 +124,7 @@ test("agenda rules 7-8: gate-awaiting and overdue-CAPA projects surface on the a
 
 test("notification channels: sink adapter captures deliveries; Teams adapter contract verified", async () => {
   // in-app notifications dispatched earlier in this suite → sink captures rows
-  await new Promise((r) => setTimeout(r, 150)); // allow fire-and-forget dispatch to land
+  await new Promise((r) => setTimeout(r, 900)); // allow fire-and-forget dispatch (incl. commit-race retry) to land
   const { rows } = await query(`SELECT count(*)::int AS n FROM notification_deliveries WHERE channel = 'SINK' AND status = 'CAPTURED'`);
   assert.ok(rows[0].n >= 1, "sink captured at least one delivery");
   // Teams adapter posts the documented payload shape (injected fetch, no real webhook)

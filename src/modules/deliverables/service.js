@@ -117,7 +117,7 @@ async function warRoom(user) {
                   AND psi.deleted_at IS NULL AND psi.site_id = $${params.length - 1})
                 OR p.project_manager_id = $${params.length})`);
   }
-  const where = ["p.deleted_at IS NULL", "p.stage <> 'CLOSED'", ...scope].join(" AND ");
+  const where = ["p.deleted_at IS NULL", "p.stage <> 'CLOSED'", "p.operating_status <> 'CANCELLED'", ...scope].join(" AND ");
 
   const projects = await query(
     `SELECT p.id, p.code, p.title, p.stage, p.priority, p.description, p.sponsor,
@@ -130,6 +130,12 @@ async function warRoom(user) {
             (SELECT json_agg(s.code) FROM project_sites ps JOIN sites s ON s.id = ps.site_id
               WHERE ps.project_id = p.id AND ps.deleted_at IS NULL) AS sites,
             (SELECT count(*)::int FROM deliverables d WHERE d.project_id = p.id AND d.deleted_at IS NULL) AS deliverable_count,
+            (SELECT count(*)::int FROM risks rk WHERE rk.project_id = p.id AND rk.deleted_at IS NULL) AS risk_count,
+            (SELECT count(*)::int FROM roadblocks rb2 WHERE rb2.project_id = p.id AND rb2.deleted_at IS NULL
+              AND rb2.severity = 'CRITICAL' AND rb2.status <> 'RESOLVED') AS open_critical_roadblocks,
+            (SELECT count(*)::int FROM actions a2 WHERE a2.project_id = p.id AND a2.deleted_at IS NULL
+              AND a2.status = 'OPEN') AS open_actions,
+            (SELECT count(*)::int FROM project_sites ps2 WHERE ps2.project_id = p.id AND ps2.deleted_at IS NULL) AS site_count,
             (SELECT count(*)::int FROM deliverables d WHERE d.project_id = p.id AND d.deleted_at IS NULL
               AND d.status = 'DELIVERED') AS delivered_count
        FROM projects p LEFT JOIN users pm ON pm.id = p.project_manager_id
@@ -143,7 +149,12 @@ async function warRoom(user) {
   const rows = projects.rows.map((p) => ({
     ...p,
     governance: gates.GOVERNANCE_LABEL[p.stage],
-    gate: gates.gateStatus(p, { milestoneCount: p.milestone_count, goLiveDone: p.golive_done > 0 }, user),
+    gate: gates.gateStatus(p, {
+      milestoneCount: p.milestone_count, goLiveDone: p.golive_done > 0,
+      deliverableCount: p.deliverable_count, riskCount: p.risk_count,
+      openCriticalRoadblocks: p.open_critical_roadblocks, openActions: p.open_actions,
+      siteCount: p.site_count,
+    }, user),
   }));
 
   const myRaci = await query(

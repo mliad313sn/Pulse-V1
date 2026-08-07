@@ -45,7 +45,7 @@ export function projectCard(p) {
       <span style="margin-left:auto" class="chip prio">${esc(p.priority)}</span>
     </div>
     <div class="title">${esc(p.title)}</div>
-    <div class="chips"><span class="chip stage ${p.stage === "ON_HOLD" ? "HOLD" : ""}">${esc(p.stage.replace("_", " "))}</span>${divChips}${siteChips}</div>
+    <div class="chips"><span class="chip stage">${esc(p.stage.replace("_", " "))}</span>${p.operating_status === "ON_HOLD" ? '<span class="chip stage HOLD">ON HOLD</span>' : ""}${p.operating_status === "CANCELLED" ? '<span class="chip conf">CANCELLED</span>' : ""}${divChips}${siteChips}</div>
     <div class="pline">
       <div class="progress"><i style="width:${p.progress_pct}%"></i></div>
       <span>${p.progress_pct}% <span style="color:var(--ink-faint)">(milestones done)</span></span>
@@ -77,7 +77,7 @@ function newProjectModal(onDone) {
           <select name="sites" multiple size="4">${optionList(m.sites, "id", (s) => s.code)}</select></div></div>
       <div class="frow"><div class="field"><label>Start date</label><input name="start" type="date"></div>
         <div class="field"><label>Target date</label><input name="target" type="date"></div>
-        <div class="field"><label>Stage</label><select name="stage">${["IDEA", "DESIGN", "BUILD", "DEPLOY", "RUN", "ON_HOLD"].map((s) => `<option>${s}</option>`).join("")}</select></div></div>
+        <div class="field"><label>Stage</label><select name="stage">${["IDEA", "INITIATION", "PLANNING", "EXECUTION", "DEPLOYMENT", "RUN"].map((s) => `<option>${s}</option>`).join("")}</select></div></div>
       <div class="field"><label>Description</label><textarea name="description"></textarea></div>
       <div class="field"><label>Sponsor</label><input name="sponsor"></div>`,
     onSave: async (box) => {
@@ -110,7 +110,7 @@ export async function renderPortfolio(container) {
       <span class="flabel">Filter:</span>
       <select id="f-division">${optionList(m.divisions, "code", (d) => `${d.code} — ${d.name}`, FILTERS.division, "Division — all")}</select>
       <select id="f-site">${optionList(m.sites, "code", (s) => s.code, FILTERS.site, "Site — all")}</select>
-      <select id="f-stage"><option value="">Stage — all</option>${["IDEA", "DESIGN", "BUILD", "DEPLOY", "RUN", "CLOSED", "ON_HOLD"].map((s) => `<option ${FILTERS.stage === s ? "selected" : ""}>${s}</option>`).join("")}</select>
+      <select id="f-stage"><option value="">Stage — all</option>${["IDEA", "INITIATION", "PLANNING", "EXECUTION", "DEPLOYMENT", "RUN", "CLOSED"].map((s) => `<option ${FILTERS.stage === s ? "selected" : ""}>${s}</option>`).join("")}</select>
       <select id="f-rag"><option value="">RAG — all</option>${["G", "A", "R"].map((r) => `<option ${FILTERS.rag === r ? "selected" : ""}>${r}</option>`).join("")}</select>
       <select id="f-priority"><option value="">Priority — all</option>${["P1", "P2", "P3"].map((p) => `<option ${FILTERS.priority === p ? "selected" : ""}>${p}</option>`).join("")}</select>
       <select id="f-pm">${optionList(m.users.filter((u) => u.role !== "VIEWER"), "id", (u) => u.name, FILTERS.pm, "PM — all")}</select>

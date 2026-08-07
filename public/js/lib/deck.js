@@ -207,7 +207,7 @@ export async function exportProjectDeck(detail) {
     s2.addText(v, { x: 10.4, y: 1.25 + i * 0.62, w: 2.5, h: 0.5, fontFace: FONT, fontSize: 11.5, bold: true, color: t.ink });
   });
   // stage stepper
-  const stages = ["IDEA", "DESIGN", "BUILD", "DEPLOY", "RUN"];
+  const stages = ["IDEA", "INITIATION", "PLANNING", "EXECUTION", "DEPLOYMENT", "RUN"];
   const idx = stages.indexOf(p.stage);
   stages.forEach((st, i) => {
     const x = 0.6 + i * 1.55;

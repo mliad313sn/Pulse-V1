@@ -33,6 +33,28 @@ async function assertValidPM(db, pmId) {
   if (rows[0].role === "VIEWER") throw badRequest("A Viewer cannot be assigned as project manager");
 }
 
+// gate-prerequisite counters for the E05 state machine and the War Room
+async function gateStats(projectId) {
+  const [ms, goLive, dl, rk, rb, act, sites] = await Promise.all([
+    query(`SELECT count(*)::int AS n FROM milestones WHERE project_id = $1 AND deleted_at IS NULL`, [projectId]),
+    query(`SELECT count(*)::int AS n FROM milestones WHERE project_id = $1 AND deleted_at IS NULL
+            AND type = 'GO_LIVE' AND status = 'DONE'`, [projectId]),
+    query(`SELECT count(*)::int AS n FROM deliverables WHERE project_id = $1 AND deleted_at IS NULL`, [projectId]),
+    query(`SELECT count(*)::int AS n FROM risks WHERE project_id = $1 AND deleted_at IS NULL`, [projectId]),
+    query(`SELECT count(*)::int AS n FROM roadblocks WHERE project_id = $1 AND deleted_at IS NULL
+            AND severity = 'CRITICAL' AND status <> 'RESOLVED'`, [projectId]),
+    query(`SELECT count(*)::int AS n FROM actions WHERE project_id = $1 AND deleted_at IS NULL
+            AND status = 'OPEN'`, [projectId]),
+    query(`SELECT count(*)::int AS n FROM project_sites WHERE project_id = $1 AND deleted_at IS NULL`, [projectId]),
+  ]);
+  return {
+    milestoneCount: ms.rows[0].n, goLiveDone: goLive.rows[0].n > 0,
+    deliverableCount: dl.rows[0].n, riskCount: rk.rows[0].n,
+    openCriticalRoadblocks: rb.rows[0].n, openActions: act.rows[0].n,
+    siteCount: sites.rows[0].n,
+  };
+}
+
 function assertOverrideValid(ragOverride, reason) {
   if (ragOverride != null && (typeof reason !== "string" || reason.trim().length < 30)) {
     throw badRequest("RAG override requires a reason of at least 30 characters");
@@ -41,6 +63,7 @@ function assertOverrideValid(ragOverride, reason) {
 
 const PROJECT_FIELDS = [
   "title", "description", "lead_division_id", "project_manager_id", "sponsor", "stage",
+  "operating_status", "hold_reason", "cancel_reason",
   "priority", "start_date", "target_date", "actual_end_date", "budget_note",
   "roadmap_pillar", "confidential", "rag_override", "rag_override_reason", "exec_commentary",
 ];
@@ -119,20 +142,25 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
     await assertValidPM({ query }, patch.project_manager_id);
   }
 
-  // ITPM360 stage gate: changing stage must follow the state machine (no skipping)
+  // Operating-status control (plan §131-132): hold/cancel need reasons; cancelled is terminal
+  if (patch.operating_status !== undefined && patch.operating_status !== project.operating_status) {
+    const opVerdict = gates.checkOperatingChange(project.operating_status, patch.operating_status, after);
+    if (!opVerdict.ok) throw badRequest(opVerdict.error);
+  }
+
+  // E05 stage gate: changing stage must follow the 7-stage machine (no skipping)
   if (after.stage !== project.stage) {
-    const [msCount, goLive] = await Promise.all([
-      query(`SELECT count(*)::int AS n FROM milestones WHERE project_id = $1 AND deleted_at IS NULL`, [project.id]),
-      query(`SELECT count(*)::int AS n FROM milestones WHERE project_id = $1 AND deleted_at IS NULL
-              AND type = 'GO_LIVE' AND status = 'DONE'`, [project.id]),
-    ]);
-    const verdict = gates.checkTransition(project.stage, after.stage, after,
-      { milestoneCount: msCount.rows[0].n, goLiveDone: goLive.rows[0].n > 0 }, actor);
+    if (project.operating_status === "CANCELLED" || after.operating_status === "CANCELLED") {
+      throw badRequest("A cancelled project cannot change lifecycle stage");
+    }
+    const stats = await gateStats(project.id);
+    const verdict = gates.checkTransition(project.stage, after.stage, after, stats, actor);
     if (!verdict.ok) {
       // steering-committee gate failure is an authorization problem, not a data problem
       const scUnmet = (verdict.unmet || []).some((r) => r.label.includes("Steering Committee"));
       throw scUnmet ? forbidden(verdict.error) : badRequest(verdict.error);
     }
+    if (after.stage === "CLOSED") after.operating_status = "COMPLETED";
   }
 
   return withTransaction(async (client) => {
@@ -141,7 +169,8 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
          title=$3, description=$4, lead_division_id=$5, project_manager_id=$6, sponsor=$7,
          stage=$8, priority=$9, start_date=$10, target_date=$11, actual_end_date=$12,
          budget_note=$13, roadmap_pillar=$14, confidential=$15, rag_override=$16,
-         rag_override_reason=$17, exec_commentary=$18, updated_at=now()
+         rag_override_reason=$17, exec_commentary=$18, operating_status=$19,
+         hold_reason=$20, cancel_reason=$21, updated_at=now()
        WHERE id=$1 AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $2::timestamptz) AND deleted_at IS NULL
        RETURNING *`,
       [
@@ -150,6 +179,7 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
         after.sponsor, after.stage, after.priority, after.start_date, after.target_date,
         after.actual_end_date, after.budget_note, after.roadmap_pillar, after.confidential,
         after.rag_override, after.rag_override_reason, after.exec_commentary,
+        after.operating_status, after.hold_reason, after.cancel_reason,
       ]
     );
     if (res.rows.length === 0) {
@@ -273,12 +303,12 @@ async function listPortfolio(user, filters = {}) {
     params.push(`%${filters.q}%`);
     where.push(`(p.title ILIKE $${params.length} OR p.code ILIKE $${params.length})`);
   }
-  if (!filters.includeClosed) where.push(`p.stage <> 'CLOSED'`);
+  if (!filters.includeClosed) { where.push(`p.stage <> 'CLOSED'`); where.push(`p.operating_status <> 'CANCELLED'`); }
 
   const { rows } = await query(
     `SELECT p.id, p.code, p.title, p.stage, p.priority, p.confidential, p.exec_commentary,
             p.rag_computed, p.rag_override, p.rag_override_reason, p.rag_signals_json,
-            p.progress_pct, p.target_date, p.last_activity_at, p.updated_at,
+            p.progress_pct, p.target_date, p.last_activity_at, p.updated_at, p.operating_status,
             ld.code AS lead_division_code,
             pm.id AS pm_id, pm.name AS pm_name, pm.role AS pm_role,
             (SELECT json_agg(json_build_object('code', d.code, 'role', pd.role_in_project) ORDER BY pd.role_in_project)
@@ -407,5 +437,5 @@ async function addDecision(actor, projectAccess, { text, decidedBy, date, meetin
 
 module.exports = {
   createProject, updateProject, setMembership, softDeleteProject,
-  listPortfolio, getDetail, postStatusUpdate, addDecision,
+  listPortfolio, getDetail, postStatusUpdate, addDecision, gateStats,
 };

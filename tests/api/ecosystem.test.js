@@ -37,51 +37,63 @@ after(closePool);
 const fresh = async (who = admin) => (await who.get(`/api/v1/projects/${project.id}`)).body.project;
 
 test("stage gates: cannot skip stages; prerequisites enforced field by field", async () => {
-  // IDEA -> BUILD is a skip
+  // IDEA -> EXECUTION is a skip
   let p = await fresh();
-  const skip = await admin.put(`/api/v1/projects/${project.id}`).send({ stage: "BUILD", updated_at: p.updated_at });
+  const skip = await admin.put(`/api/v1/projects/${project.id}`).send({ stage: "EXECUTION", updated_at: p.updated_at });
   assert.equal(skip.status, 400);
   assert.match(skip.body.error, /cannot move directly/);
-  // IDEA -> DESIGN blocked while proposal fields are missing
-  const early = await admin.put(`/api/v1/projects/${project.id}`).send({ stage: "DESIGN", updated_at: p.updated_at });
+  // IDEA -> INITIATION blocked while proposal fields are missing
+  const early = await admin.put(`/api/v1/projects/${project.id}`).send({ stage: "INITIATION", updated_at: p.updated_at });
   assert.equal(early.status, 400);
-  assert.match(early.body.error, /Sponsor|Description|Target/);
-  // fill the proposal, then the gate opens (no committee needed at this gate)
+  assert.match(early.body.error, /Sponsor|described|pillar/i);
+  // fill the proposal -> Gate 0 opens (no committee needed)
   p = await fresh();
-  const ok = await infLead.put(`/api/v1/projects/${project.id}`).send({
-    stage: "DESIGN", description: "Replace SGO core switching", sponsor: "CIO",
-    target_date: "2026-12-01", updated_at: p.updated_at,
+  const g0 = await infLead.put(`/api/v1/projects/${project.id}`).send({
+    stage: "INITIATION", description: "Replace SGO core switching", sponsor: "CIO",
+    roadmap_pillar: "Network", updated_at: p.updated_at,
   });
-  assert.equal(ok.status, 200);
-  assert.equal(ok.body.project.stage, "DESIGN");
+  assert.equal(g0.status, 200);
+  // Gate 1 needs PM + target date (+ site, already attached)
+  p = await fresh();
+  const noPm = await infLead.put(`/api/v1/projects/${project.id}`).send({ stage: "PLANNING", updated_at: p.updated_at });
+  assert.equal(noPm.status, 400);
+  p = await fresh();
+  const g1 = await infLead.put(`/api/v1/projects/${project.id}`).send({
+    stage: "PLANNING", project_manager_id: F.U.infLead, target_date: "2026-12-01", updated_at: p.updated_at,
+  });
+  assert.equal(g1.status, 200);
+  assert.equal(g1.body.project.stage, "PLANNING");
 });
 
-test("PLANNING->EXECUTION gate: Steering Committee only, milestones required, ledger written", async () => {
-  // milestone prerequisite missing
+test("PLANNING->EXECUTION gate: Steering only, milestone+deliverable+risk required, ledger written", async () => {
+  // prerequisites missing
   let p = await fresh();
-  const noMs = await admin.put(`/api/v1/projects/${project.id}`).send({ stage: "BUILD", updated_at: p.updated_at });
+  const noMs = await admin.put(`/api/v1/projects/${project.id}`).send({ stage: "EXECUTION", updated_at: p.updated_at });
   assert.equal(noMs.status, 400);
-  assert.match(noMs.body.error, /milestone/i);
+  assert.match(noMs.body.error, /milestone|deliverable|risk/i);
   await admin.post(`/api/v1/projects/${project.id}/milestones`).send({ title: "Build phase 1", due_date: "2026-10-01" });
+  await admin.post(`/api/v1/projects/${project.id}/deliverables`).send({ title: "As-built docs" });
+  await admin.post(`/api/v1/projects/${project.id}/risks`).send({ title: "Vendor delay", probability: 3, impact: 3 });
   // non-committee full-access user (lead of the LEAD division) is refused with 403
   p = await fresh();
-  const denied = await infLead.put(`/api/v1/projects/${project.id}`).send({ stage: "BUILD", updated_at: p.updated_at });
+  const denied = await infLead.put(`/api/v1/projects/${project.id}`).send({ stage: "EXECUTION", updated_at: p.updated_at });
   assert.equal(denied.status, 403);
   assert.match(denied.body.error, /Steering Committee/);
   // committee member approves; the transition is recorded in the ledger
   p = await fresh();
   const approved = await admin.put(`/api/v1/projects/${project.id}`).send({
-    stage: "BUILD", stage_note: "SC approval in weekly review", updated_at: p.updated_at,
+    stage: "EXECUTION", stage_note: "SC approval in weekly review", updated_at: p.updated_at,
   });
   assert.equal(approved.status, 200);
   const ledger = await query(
     `SELECT * FROM stage_transitions WHERE project_id = $1 ORDER BY id`, [project.id]
   );
-  assert.deepEqual(ledger.rows.map((r) => `${r.from_stage}>${r.to_stage}`), ["IDEA>DESIGN", "DESIGN>BUILD"]);
-  assert.equal(ledger.rows[1].note, "SC approval in weekly review");
+  assert.deepEqual(ledger.rows.map((r) => `${r.from_stage}>${r.to_stage}`),
+    ["IDEA>INITIATION", "INITIATION>PLANNING", "PLANNING>EXECUTION"]);
+  assert.equal(ledger.rows[2].note, "SC approval in weekly review");
   // War Room shows the approval
   const wr = await admin.get("/api/v1/warroom");
-  assert.ok(wr.body.transitions.some((t) => t.project_code === project.code && t.to_stage === "BUILD"));
+  assert.ok(wr.body.transitions.some((t) => t.project_code === project.code && t.to_stage === "EXECUTION"));
 });
 
 test("deliverables + RACI: full-access defines, tagged R can update, War Room lists my duties", async () => {

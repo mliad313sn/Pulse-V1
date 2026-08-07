@@ -3,7 +3,7 @@ import { api, state } from "../lib/api.js";
 import { esc, fmtDate, isoDate, ragDot, avatar, modal, toast, showError, optionList, emptyState } from "../lib/ui.js";
 import { exportProjectDeck } from "../lib/deck.js";
 
-const STAGES = ["IDEA", "DESIGN", "BUILD", "DEPLOY", "RUN"];
+const STAGES = ["IDEA", "INITIATION", "PLANNING", "EXECUTION", "DEPLOYMENT", "RUN"];
 let activeTab = "timeline";
 
 export async function renderProject(container, projectId) {
@@ -15,7 +15,7 @@ export async function renderProject(container, projectId) {
 
   const stageIdx = STAGES.indexOf(p.stage);
   const stepper = STAGES.map((s, i) => `
-    <span class="step ${p.stage === "ON_HOLD" || p.stage === "CLOSED" ? "" : i < stageIdx ? "done" : i === stageIdx ? "now" : ""}">
+    <span class="step ${p.operating_status === "ON_HOLD" || p.stage === "CLOSED" ? "" : i < stageIdx ? "done" : i === stageIdx ? "now" : ""}">
       <span class="node">${s}</span>${i < STAGES.length - 1 ? '<span class="bar"></span>' : ""}</span>`).join("");
 
   container.innerHTML = `
@@ -27,11 +27,11 @@ export async function renderProject(container, projectId) {
         <span style="color:var(--ink-faint);font-weight:700;font-size:.8rem">${esc(p.code)}</span>
         <span class="chip prio">${esc(p.priority)}</span>
         ${p.confidential ? '<span class="chip conf">CONFIDENTIAL</span>' : ""}
-        <span style="margin-left:auto" class="chip stage ${p.stage === "ON_HOLD" ? "HOLD" : ""}">${esc(p.stage.replace("_", " "))}</span>
+        <span style="margin-left:auto" class="chip stage">${esc(p.stage.replace("_", " "))}</span>
         ${canFull ? '<button class="btn small" id="edit-project">✎ Edit</button>' : ""}
         <button class="btn primary small" id="export-project-deck">⬇ Project deck</button>
       </div>
-      <div class="stepper">${stepper}${p.stage === "ON_HOLD" ? '<span class="chip stage HOLD" style="margin-left:10px">ON HOLD</span>' : ""}</div>
+      <div class="stepper">${stepper}${p.operating_status === "ON_HOLD" ? '<span class="chip stage HOLD" style="margin-left:10px">ON HOLD</span>' : ""}${p.operating_status === "CANCELLED" ? '<span class="chip conf" style="margin-left:10px">CANCELLED</span>' : ""}</div>
       <div class="facts">
         <span>Project Manager<b>${d.pm ? `${avatar(d.pm.name, d.pm.role === "CONTRIBUTOR", 20)} ${esc(d.pm.name)}
           <span style="font-weight:400;color:var(--ink-faint)">(${esc(d.pm.role.replace("_", " "))})</span>` : "—"}</b></span>
@@ -126,7 +126,7 @@ function editProjectModal(d, reload) {
     body: `
       <div class="frow"><div class="field" style="flex:2"><label>Title</label><input name="title" value="${esc(p.title)}"></div>
         <div class="field"><label>Priority</label><select name="priority">${["P1", "P2", "P3"].map((x) => `<option ${p.priority === x ? "selected" : ""}>${x}</option>`).join("")}</select></div>
-        <div class="field"><label>Stage</label><select name="stage">${["IDEA", "DESIGN", "BUILD", "DEPLOY", "RUN", "CLOSED", "ON_HOLD"].map((s) => `<option ${p.stage === s ? "selected" : ""}>${s}</option>`).join("")}</select></div></div>
+        <div class="field"><label>Stage</label><select name="stage">${["IDEA", "INITIATION", "PLANNING", "EXECUTION", "DEPLOYMENT", "RUN", "CLOSED"].map((s) => `<option ${p.stage === s ? "selected" : ""}>${s}</option>`).join("")}</select></div></div>
       <div class="frow">
         <div class="field"><label>Lead division</label><select name="lead">${optionList(m.divisions, "id", (x) => x.code, p.lead_division_id)}</select></div>
         <div class="field"><label>Project manager</label><select name="pm">${optionList(m.users.filter((u) => u.role !== "VIEWER"), "id", (u) => u.name, p.project_manager_id ?? "", "— none —")}</select></div>

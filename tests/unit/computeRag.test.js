@@ -11,7 +11,8 @@ const d = (offset) => {
   return x.toISOString().slice(0, 10);
 };
 const base = (over = {}) => ({
-  stage: "BUILD",
+  stage: "EXECUTION",
+  operatingStatus: "IN_PROGRESS",
   milestones: [],
   roadblocks: [],
   actions: [],
@@ -136,12 +137,17 @@ test("freshness: never updated measures from creation, not instantly amber", () 
   assert.equal(r2.signals.freshness.value, "A");
 });
 
-test("freshness: RUN / CLOSED / ON_HOLD exempt even when silent for months", () => {
+test("freshness: RUN/CLOSED stages and ON_HOLD/CANCELLED operating status exempt even when silent", () => {
   const old = d(-90);
-  for (const stage of ["RUN", "CLOSED", "ON_HOLD"]) {
+  for (const stage of ["RUN", "CLOSED"]) {
     const r = computeRag(base({ stage, lastActivityAt: old, lastStatusUpdateAt: old }));
     assert.equal(r.signals.freshness.value, "G", stage);
     assert.equal(r.signals.freshness.exempt, true, stage);
+  }
+  for (const operatingStatus of ["ON_HOLD", "CANCELLED"]) {
+    const r = computeRag(base({ operatingStatus, lastActivityAt: old, lastStatusUpdateAt: old }));
+    assert.equal(r.signals.freshness.value, "G", operatingStatus);
+    assert.equal(r.signals.freshness.exempt, true, operatingStatus);
   }
   // sanity: same dates on BUILD is red
   assert.equal(computeRag(base({ lastActivityAt: old, lastStatusUpdateAt: old })).signals.freshness.value, "R");

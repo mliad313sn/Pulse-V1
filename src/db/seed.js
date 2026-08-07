@@ -104,14 +104,16 @@ async function seed(force = false) {
       const r = await c.query(
         `INSERT INTO projects (code, title, description, lead_division_id, project_manager_id, sponsor,
            stage, priority, start_date, target_date, roadmap_pillar, confidential,
-           rag_override, rag_override_reason, exec_commentary, created_by, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$17) RETURNING id`,
+           rag_override, rag_override_reason, exec_commentary, created_by, created_at, updated_at,
+           operating_status, hold_reason)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$17,$18,$19) RETURNING id`,
         [
           code, fields.title, fields.description || null, D[fields.lead], fields.pm ? U[fields.pm] : null,
           fields.sponsor || "Group IT Manager", fields.stage, fields.priority,
           fields.start, fields.target, fields.pillar || "Network", fields.confidential === true,
           fields.override || null, fields.overrideReason || null, fields.exec || null,
           U.admin, fields.createdAt || daysTs(-120),
+          fields.opStatus || "IN_PROGRESS", fields.holdReason || null,
         ]
       );
       P[key] = r.rows[0].id;
@@ -131,7 +133,7 @@ async function seed(force = false) {
     // 001 — RED: slipped milestone + open CRITICAL roadblock + overdue action. PM = Contributor (Awa, SGO).
     await mkProject("lan", 1, {
       title: "SGO LAN Refresh", lead: "INF", engaged: ["OPS", "SEC"], sites: ["SGO"],
-      stage: "BUILD", priority: "P1", pm: "awa", start: days(-150), target: days(40),
+      stage: "EXECUTION", priority: "P1", pm: "awa", start: days(-150), target: days(40),
       exec: "SGO backbone is 20 years old and drops daily at shift change. This refresh removes the single point of failure before the wet season. One risk matters: the core switch is in customs — cleared within 2 weeks or go-live slips a month.",
       description: "Full replacement of the SGO campus LAN: core switches, access layer, fibre backbone and UPS.",
     });
@@ -139,60 +141,60 @@ async function seed(force = false) {
     await mkProject("erp", 2, {
       title: "Group ERP Upgrade R2", lead: "BAP", engaged: ["INF", "OPS", "DAT"],
       sites: ["GROUP", "SGO", "HGO", "ITY", "SML", "MGO", "KGO"],
-      stage: "DESIGN", priority: "P1", pm: "bap", start: days(-90), target: days(175),
+      stage: "PLANNING", priority: "P1", pm: "bap", start: days(-90), target: days(175),
       exec: "ERP R2 unlocks consolidated month-end close across all sites.",
       description: "Upgrade of the group ERP to release R2 with site rollouts.", pillar: "BizPartnering",
     });
     // 003 — GREEN with GO_LIVE inside 30 days. PM = Contributor (Ibrahim, HGO).
     await mkProject("wan", 3, {
       title: "HGO Backup WAN Link", lead: "INF", engaged: ["OPS"], sites: ["HGO"],
-      stage: "DEPLOY", priority: "P2", pm: "ibra", start: days(-100), target: days(14),
+      stage: "DEPLOYMENT", priority: "P2", pm: "ibra", start: days(-100), target: days(14),
       exec: "Removes the single WAN path at HGO ahead of the wet season.",
       description: "Secondary WAN link with automatic failover at Houndé.",
     });
     // 004 — AMBER: major roadblock
     await mkProject("soc", 4, {
       title: "SOC Onboarding Wave 2", lead: "SEC", engaged: ["INF", "OPS"], sites: ["ITY", "SML"],
-      stage: "BUILD", priority: "P1", pm: "sec", start: days(-80), target: days(55), pillar: "Risk",
+      stage: "EXECUTION", priority: "P1", pm: "sec", start: days(-80), target: days(55), pillar: "Risk",
       description: "Onboarding ITY and SML into the managed SOC: sensors, log forwarding, runbooks.",
     });
     // 005 — GREEN
     await mkProject("lake", 5, {
       title: "BI Datalake Phase 2", lead: "DAT", engaged: ["BAP"], sites: ["GROUP"],
-      stage: "BUILD", priority: "P2", pm: "marie", start: days(-70), target: days(85),
+      stage: "EXECUTION", priority: "P2", pm: "marie", start: days(-70), target: days(85),
       description: "Ingestion pipelines and governed marts for production analytics.", pillar: "BizPartnering",
     });
     // 006 — RED via silence: all writes >30 days ago. PM = Contributor (Sekou, ITY).
     await mkProject("wifi", 6, {
       title: "ITY Camp Wi-Fi Extension", lead: "OPS", engaged: ["INF"], sites: ["ITY"],
-      stage: "BUILD", priority: "P3", pm: "sekou", start: days(-120), target: days(25),
+      stage: "EXECUTION", priority: "P3", pm: "sekou", start: days(-120), target: days(25),
       createdAt: daysTs(-120),
       description: "Extending camp Wi-Fi coverage to accommodation blocks B and C.", pillar: "People",
     });
     // 007 — AMBER: schedule (1 of 4 milestones slipped = 25%>20% would be RED; use 1/5=20% => A)
     await mkProject("mgoerp", 7, {
       title: "MGO ERP Site Rollout", lead: "BAP", engaged: ["OPS"], sites: ["MGO"],
-      stage: "DEPLOY", priority: "P1", pm: "amina", start: days(-60), target: days(20),
+      stage: "DEPLOYMENT", priority: "P1", pm: "amina", start: days(-60), target: days(20),
       description: "ERP cutover for Mana: data migration, training, site readiness.", pillar: "BizPartnering",
     });
     // 008 — ON_HOLD: freshness exempt even though silent
     await mkProject("ea", 8, {
       title: "EA Reference Architecture", lead: "EAR", engaged: ["GRP"], sites: ["GROUP"],
-      stage: "ON_HOLD", priority: "P3", pm: "ear", start: days(-200), target: null,
+      stage: "PLANNING", opStatus: "ON_HOLD", holdReason: "Paused pending budget review Q4", priority: "P3", pm: "ear", start: days(-200), target: null,
       createdAt: daysTs(-200),
       description: "Target-state reference architecture. Paused pending budget review.", pillar: "Other",
     });
     // 009 — manual override (computed G, overridden A with >=30 char reason)
     await mkProject("kgo", 9, {
       title: "KGO Site IT Build-out", lead: "INF", engaged: ["OPS", "SEC"], sites: ["KGO"],
-      stage: "BUILD", priority: "P1", pm: "moussa", start: days(-45), target: days(115),
+      stage: "EXECUTION", priority: "P1", pm: "moussa", start: days(-45), target: days(115),
       override: "A", overrideReason: "Rack delivery re-baselined with vendor; schedule risk contained pending week-33 confirmation.",
       description: "Green-field IT build for Kalana: server room, LAN, WAN, EUC.",
     });
     // 010 — confidential (Admin-only visibility for non-leads)
     await mkProject("dash", 10, {
       title: "Executive Cost Dashboard", lead: "DAT", engaged: ["GRP"], sites: ["GROUP", "DKR"],
-      stage: "DESIGN", priority: "P2", pm: "dat", start: days(-30), target: days(145),
+      stage: "PLANNING", priority: "P2", pm: "dat", start: days(-30), target: days(145),
       confidential: true, pillar: "BizPartnering",
       description: "Confidential: consolidated IT cost dashboard for ExCo.",
     });
@@ -358,7 +360,7 @@ async function seed(force = false) {
     }
     await c.query(
       `INSERT INTO stage_transitions (project_id, from_stage, to_stage, approved_by, note)
-       VALUES ($1,'DESIGN','BUILD',$2,'Steering committee approval — design freeze reached')`,
+       VALUES ($1,'PLANNING','EXECUTION',$2,'Steering committee approval — design freeze reached')`,
       [P.lan, U.admin]
     );
 

@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **80/80 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **81/81 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -32,12 +32,16 @@ node --test tests/api/risk-capa.test.js
 ```
 Dev DB: `postgres://pulse:pulse@localhost:5432/pulse` · test DB `pulse_test` (see .env.example).
 
+## Completed: E05 remodel (2026-08-07, round 3)
+7-stage lifecycle + operating_status shipped as one atomic slice (migration 005 with
+data mapping DESIGN→PLANNING, BUILD→EXECUTION, DEPLOY→DEPLOYMENT, stage ON_HOLD →
+operating_status). Gates 0-5 with per-gate prerequisites (G2 = milestone+deliverable+
+risk+Steering). Hold/cancel need reasons; cancelled terminal; CLOSED sets COMPLETED.
+Freshness exemption now stage RUN/CLOSED or op-status ON_HOLD/CANCELLED/COMPLETED.
+Channel dispatch made commit-race tolerant (FK retry then unlinked ledger row).
+
 ## Next executable work items (dependency order)
-1. **E05 finish**: rename lifecycle to 7 stages (IDEA→INITIATION→PLANNING→EXECUTION→DEPLOYMENT→RUN→CLOSED)
-   with data migration from current enum; add `operating_status` column
-   (NOT_STARTED/IN_PROGRESS/ON_HOLD/COMPLETED/CANCELLED) and move ON_HOLD out of stage;
-   gate request/evidence records. Touches: gates.js, projects service, seed, many tests — do as one atomic slice.
-2. **E07**: workstreams + tasks + dependencies (cycle rejection) + critical path util (+unit tests) — prerequisite for Gantt UI.
+1. **E07**: workstreams + tasks + dependencies (cycle rejection) + critical path util (+unit tests) — prerequisite for Gantt UI.
 4. **E04 finish**: pillars/portfolios/programs entities + portfolio filter.
 5. **E21**: reminder engine (T-14/T-7/T-2/T0/T+1/T+7) with idempotent cron + dedupe keys.
 6. **E22**: Executive Command Center view; KPI drill-throughs.

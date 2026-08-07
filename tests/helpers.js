@@ -24,7 +24,7 @@ async function initDb() {
     project_sites, project_divisions, projects, users, sequences, sites, divisions, session,
     schema_migrations RESTART IDENTITY CASCADE`);
   // re-record migration (truncate wiped the ledger; schema itself persists)
-  await query(`INSERT INTO schema_migrations (name) VALUES ('001_init.sql'), ('002_ecosystem.sql'), ('003_risk_capa_channels.sql'), ('004_minutes_versions.sql') ON CONFLICT DO NOTHING`);
+  await query(`INSERT INTO schema_migrations (name) VALUES ('001_init.sql'), ('002_ecosystem.sql'), ('003_risk_capa_channels.sql'), ('004_minutes_versions.sql'), ('005_lifecycle.sql') ON CONFLICT DO NOTHING`);
 }
 
 // Standard fixture: divisions, sites, one user per role + a second contributor

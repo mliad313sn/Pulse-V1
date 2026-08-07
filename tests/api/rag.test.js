@@ -101,14 +101,17 @@ test("no status_update for >21d (activity recent) -> AMBER freshness", async () 
   assert.equal(d.body.project.rag_computed, "A");
 });
 
-test("ON_HOLD (and RUN/CLOSED) are freshness-exempt even when silent for months", async () => {
-  for (const stage of ["ON_HOLD", "RUN"]) {
-    const p = await freshProject(`${stage} sleeper`, { stage });
-    await query(`UPDATE projects SET created_at = now() - interval '90 days', updated_at = now() - interval '80 days' WHERE id = $1`, [p.id]);
-    await admin.post("/api/v1/rag/recompute-all");
+test("RUN stage and ON_HOLD operating status are freshness-exempt even when silent for months", async () => {
+  const runP = await freshProject("RUN sleeper", { stage: "RUN" });
+  await query(`UPDATE projects SET created_at = now() - interval '90 days', updated_at = now() - interval '80 days' WHERE id = $1`, [runP.id]);
+  const heldP = await freshProject("Held sleeper");
+  await query(`UPDATE projects SET operating_status = 'ON_HOLD', hold_reason = 'Budget freeze until Q4 review',
+               created_at = now() - interval '90 days', updated_at = now() - interval '80 days' WHERE id = $1`, [heldP.id]);
+  await admin.post("/api/v1/rag/recompute-all");
+  for (const p of [runP, heldP]) {
     const d = await admin.get(`/api/v1/projects/${p.id}`);
-    assert.equal(d.body.project.rag_signals_json.freshness.value, "G", stage);
-    assert.equal(d.body.project.rag_computed, "G", stage);
+    assert.equal(d.body.project.rag_signals_json.freshness.value, "G");
+    assert.equal(d.body.project.rag_computed, "G");
   }
 });
 

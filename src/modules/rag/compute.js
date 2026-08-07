@@ -16,7 +16,8 @@
 const WORST = { G: 0, A: 1, R: 2 };
 const worst = (values) => values.reduce((acc, v) => (WORST[v] > WORST[acc] ? v : acc), "G");
 
-const FRESHNESS_EXEMPT_STAGES = new Set(["RUN", "CLOSED", "ON_HOLD"]);
+const FRESHNESS_EXEMPT_STAGES = new Set(["RUN", "CLOSED"]);
+const FRESHNESS_EXEMPT_OPSTATUS = new Set(["ON_HOLD", "CANCELLED", "COMPLETED"]);
 
 function toDate(d) {
   if (!d) return null;
@@ -69,9 +70,11 @@ function actionSignal(actions, today) {
 // RUN / CLOSED / ON_HOLD stages are exempt.
 // A project with no status_update yet is measured from its creation date, so a
 // fresh project is not instantly amber.
-function freshnessSignal(stage, lastActivityAt, lastStatusUpdateAt, createdAt, today) {
+function freshnessSignal(stage, operatingStatus, lastActivityAt, lastStatusUpdateAt, createdAt, today) {
   if (FRESHNESS_EXEMPT_STAGES.has(stage))
     return { value: "G", detail: `exempt (${stage})`, exempt: true };
+  if (FRESHNESS_EXEMPT_OPSTATUS.has(operatingStatus))
+    return { value: "G", detail: `exempt (${operatingStatus})`, exempt: true };
   const activity = toDate(lastActivityAt) || toDate(createdAt);
   if (activity && daysBetween(activity, today) > 30)
     return { value: "R", detail: `silent for ${Math.floor(daysBetween(activity, today))} days` };
@@ -96,6 +99,7 @@ function computeRag(aggregate) {
     actions: actionSignal(aggregate.actions || [], today),
     freshness: freshnessSignal(
       aggregate.stage,
+      aggregate.operatingStatus,
       aggregate.lastActivityAt,
       aggregate.lastStatusUpdateAt,
       aggregate.createdAt,

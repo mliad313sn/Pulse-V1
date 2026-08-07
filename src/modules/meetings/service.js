@@ -17,7 +17,7 @@ async function buildAgenda(siteId /* nullable */, meetingType) {
     siteClause = `AND EXISTS (SELECT 1 FROM project_sites ps
                     WHERE ps.project_id = p.id AND ps.site_id = $${params.length} AND ps.deleted_at IS NULL)`;
   }
-  const activeProjects = `p.deleted_at IS NULL AND p.stage NOT IN ('CLOSED') ${siteClause}`;
+  const activeProjects = `p.deleted_at IS NULL AND p.stage NOT IN ('CLOSED') AND p.operating_status NOT IN ('CANCELLED') ${siteClause}`;
 
   // (a) RED projects  (b) AMBER projects — effective (override wins)
   const ragRows = await query(
@@ -75,7 +75,7 @@ async function buildAgenda(siteId /* nullable */, meetingType) {
   const silent = await query(
     `SELECT p.id, p.code, p.title FROM projects p
       WHERE ${activeProjects}
-        AND p.stage NOT IN ('RUN','ON_HOLD')
+        AND p.stage NOT IN ('RUN') AND p.operating_status NOT IN ('ON_HOLD')
         AND p.last_activity_at < now() - interval '30 days'`,
     params
   );
@@ -84,7 +84,7 @@ async function buildAgenda(siteId /* nullable */, meetingType) {
   // prerequisite is met — only a Steering approver can move them forward
   const gatesWaiting = await query(
     `SELECT p.id, p.code, p.title FROM projects p
-      WHERE ${activeProjects} AND p.stage = 'DESIGN'
+      WHERE ${activeProjects} AND p.stage = 'PLANNING'
         AND EXISTS (SELECT 1 FROM milestones m
                      WHERE m.project_id = p.id AND m.deleted_at IS NULL)`,
     params

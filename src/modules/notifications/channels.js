@@ -12,12 +12,32 @@
 // the business transaction that raised the notification.
 const { query } = require("../../db/pool");
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function recordDelivery({ notificationId, channel, recipient, payload, status, error }) {
-  await query(
-    `INSERT INTO notification_deliveries (notification_id, channel, recipient, payload, status, error)
-     VALUES ($1,$2,$3,$4,$5,$6)`,
-    [notificationId || null, channel, recipient, JSON.stringify(payload || {}), status, error || null]
-  );
+  const insert = (nid) =>
+    query(
+      `INSERT INTO notification_deliveries (notification_id, channel, recipient, payload, status, error)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [nid, channel, recipient, JSON.stringify(payload || {}), status, error || null]
+    );
+  try {
+    await insert(notificationId || null);
+  } catch (err) {
+    // The notification row is written inside a business transaction; this dispatch
+    // is fire-and-forget and can outrun the commit. Wait briefly for the commit,
+    // then fall back to an unlinked ledger row (the transaction may have rolled back).
+    if (String(err.message).includes("notification_deliveries_notification_id_fkey")) {
+      await sleep(300);
+      try {
+        await insert(notificationId || null);
+      } catch {
+        await insert(null);
+      }
+    } else {
+      throw err;
+    }
+  }
 }
 
 // Local sink adapter — the dev/test substitute required by the external-deps policy.
