@@ -67,6 +67,11 @@ async function recomputeProject(db, projectId, actingUserId) {
   // Project turns RED -> notify PM + Division Lead of the lead division (plan §2)
   const effectiveBefore = project.rag_override || project.rag_computed;
   const effectiveAfter = project.rag_override || rag;
+  if (effectiveAfter !== effectiveBefore) {
+    await require("../platform/outbox").emit(db, "project.health_changed", {
+      project_id: projectId, code: project.code, from: effectiveBefore, to: effectiveAfter,
+    });
+  }
   if (effectiveAfter === "R" && effectiveBefore !== "R") {
     const targets = new Set();
     if (project.project_manager_id) targets.add(project.project_manager_id);

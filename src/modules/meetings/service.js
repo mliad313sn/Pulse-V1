@@ -501,6 +501,9 @@ async function closeMeeting(actor, meetingId) {
       `UPDATE meetings SET status = 'CLOSED', minutes_json = $2, updated_at = now() WHERE id = $1 RETURNING *`,
       [meetingId, JSON.stringify(minutes)]
     );
+    await require("../platform/outbox").emit(client, "meeting.closed", {
+      meeting_id: meetingId, title: meeting.title, minutes_version: version,
+    });
     await audit.record(client, {
       entity: "meeting", entityId: meetingId, userId: actor.id,
       changes: [{ field: "minutes_version", old: String(version - 1) || null, new: String(version) }],

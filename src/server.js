@@ -91,6 +91,7 @@ function createApp(options = {}) {
   app.use("/api/v1", require("./modules/scenarios/routes"));
   app.use("/api/v1", require("./modules/graph/routes"));
   app.use("/api/v1", require("./modules/intelligence/routes"));
+  app.use("/api/v1", require("./modules/platform/routes"));
   app.use("/api/v1/sync", require("./modules/sync/routes").router);
 
   // Reference data for pickers (any authenticated user)
@@ -140,6 +141,7 @@ if (require.main === module) {
         require("./jobs/backup").start();
         require("./jobs/reminders").start();
         require("./jobs/reportDispatch").start();
+        require("./modules/platform/outbox").startWorker(); // webhook delivery + retry
       }
     })
     .catch((err) => {

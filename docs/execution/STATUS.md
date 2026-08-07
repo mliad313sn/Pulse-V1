@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **160/160 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **164/164 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -140,8 +140,17 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
   write path and never approves. UI: ✨ Draft with AI fills the exec
   commentary for human review. REMAINING: predictions/anomaly detection;
   meeting-assistant drafting.
-- **P10 Platform**: versioned API + OpenAPI; webhooks; Jira/ADO/ServiceNow/
-  Teams/PowerBI/ERP/HRIS/SCIM adapters (contract + fake pattern).
+- **P10 Platform — DONE (core)**: durable webhook outbox (migration 023) —
+  events enqueue in the SAME transaction as the domain change (project
+  created/stage changed/health changed, CR created/decided, demand decided,
+  meeting closed), delivered HMAC-SHA256-signed with exponential backoff and
+  a real DLQ after 6 attempts, Admin ledger + redrive, FOR UPDATE SKIP LOCKED
+  so multiple instances never double-send; payloads carry identifiers only so
+  a webhook can never bypass confidentiality or finance masking. OpenAPI 3.1
+  document GENERATED from the live Express router (a route that exists is
+  documented; deleted routes disappear) at /api/v1/openapi.json, plus the
+  event catalogue at /api/v1/events/catalogue. REMAINING: Jira/ADO/
+  ServiceNow/Teams/PowerBI/ERP/HRIS/SCIM adapters (BLOCKED_EXTERNAL contracts).
 - **P11 UX**: configurable views (board/timeline/Gantt/heatmap/graph);
   progressive disclosure per role.
 - **P12 Scale/ops**: Redis coordination; outbox/DLQ; OpenTelemetry; PITR;

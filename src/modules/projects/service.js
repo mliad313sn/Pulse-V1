@@ -6,6 +6,7 @@ const rag = require("../rag/service");
 const notifications = require("../notifications/service");
 const gates = require("./gates");
 const portfolioHierarchy = require("../portfolio/service");
+const outbox = require("../platform/outbox");
 
 // ===== code generation: PRJ-{YYYY}-{NNN} from sequences row locked FOR UPDATE =====
 async function nextProjectCode(client) {
@@ -129,6 +130,9 @@ async function createProject(actor, input) {
       await require("../templates/service").applyTemplate(client, input.template_id, project, actor.id);
     }
     await audit.recordCreate(client, "project", project.id, actor.id);
+    await outbox.emit(client, "project.created", {
+      project_id: project.id, code: project.code, title: project.title, stage: project.stage,
+    });
     if (project.project_manager_id) {
       await notifications.create(client, {
         userId: project.project_manager_id, type: "PM_ASSIGNED",
@@ -229,6 +233,9 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
          VALUES ($1,$2,$3,$4,$5)`,
         [project.id, project.stage, after.stage, actor.id, patch.stage_note || null]
       );
+      await outbox.emit(client, "project.stage_changed", {
+        project_id: project.id, code: after.code, from_stage: project.stage, to_stage: after.stage,
+      });
     }
     if (
       patch.project_manager_id !== undefined &&

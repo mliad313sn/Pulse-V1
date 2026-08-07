@@ -8,6 +8,7 @@
 const { query, withTransaction } = require("../../db/pool");
 const audit = require("../../middleware/audit");
 const notifications = require("../notifications/service");
+const outbox = require("../platform/outbox");
 const { badRequest, conflict, notFound, forbidden } = require("../../middleware/errors");
 
 const canDecide = (u) => u.role === "ADMIN" || u.is_steering_committee === true;
@@ -83,6 +84,10 @@ async function createChangeRequest(actor, projectAccess, input) {
        input.risk_impact || null, actor.id]
     );
     await audit.recordCreate(client, "change_request", rows[0].id, actor.id);
+    await outbox.emit(client, "change_request.created", {
+      change_request_id: rows[0].id, project_id: projectAccess.project.id,
+      type: input.type, title: input.title,
+    });
     // Steering members get notified a decision is waiting
     const { rows: sc } = await client.query(
       `SELECT id FROM users WHERE deleted_at IS NULL AND active = true
@@ -137,6 +142,9 @@ async function decideChangeRequest(actor, projectAccess, crId, decision, note, e
     await audit.record(client, {
       entity: "change_request", entityId: crId, userId: actor.id,
       changes: [{ field: "status", old: "PENDING", new: decision }],
+    });
+    await outbox.emit(client, "change_request.decided", {
+      change_request_id: crId, project_id: projectAccess.project.id, decision,
     });
     let baseline = null;
     if (decision === "APPROVED") {

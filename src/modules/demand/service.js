@@ -140,6 +140,9 @@ async function decide(actor, id, decision, note, expectedUpdatedAt) {
       entity: "demand", entityId: id, userId: actor.id,
       changes: [{ field: "status", old: "SUBMITTED", new: decision }],
     });
+    await require("../platform/outbox").emit(client, "demand.decided", {
+      demand_id: id, decision,
+    });
     if (before.requester_id) {
       await notifications.create(client, {
         userId: before.requester_id, type: "CHANGE_REQUEST", entity: "demand", entityId: id,
