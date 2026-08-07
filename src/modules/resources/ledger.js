@@ -32,10 +32,15 @@ function monthGrid(from, months) {
   return out;
 }
 
-function defaultWindow() {
+// Without an explicit start, anchor one month back so the current month is
+// visible alongside the horizon being planned. `months` is always honoured —
+// a caller asking for 6 gets 6, not the full 25-month range.
+function defaultWindow(months) {
   const now = new Date();
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - MONTHS_BACK, 1));
-  return { from: periodOf(start), months: MONTHS_BACK + MONTHS_FORWARD + 1 };
+  const span = months || (MONTHS_BACK + MONTHS_FORWARD + 1);
+  const back = months ? 1 : MONTHS_BACK;
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1));
+  return { from: periodOf(start), months: span };
 }
 
 // Only people the caller may see: a site-restricted account never learns about
@@ -51,9 +56,8 @@ function peopleScope(user, params) {
 // The heart of it. Returns one row per person per month, always — including
 // people with no project work, no capacity row, or no tickets (defect D2).
 async function capacityLedger(user, { from, months, siteCode, overloadedOnly = false } = {}) {
-  const win = from ? { from, months: months || 6 } : defaultWindow();
+  const win = from ? { from, months: months || 6 } : defaultWindow(months);
   const periods = monthGrid(win.from, win.months);
-  const firstDay = `${periods[0]}-01`;
   const lastPeriod = periods[periods.length - 1];
 
   const params = [];
@@ -276,7 +280,7 @@ function group(rows, keyFn) {
 
 // Unattributed load — must be visible so a site cannot game its headroom.
 async function unattributed({ from, months } = {}) {
-  const win = from ? { from, months: months || 6 } : defaultWindow();
+  const win = from ? { from, months: months || 6 } : defaultWindow(months);
   const periods = monthGrid(win.from, win.months);
   const { rows } = await query(
     `SELECT period, site_code, reason, sum(tickets)::int AS tickets, max(imported_at) AS imported_at

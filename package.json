@@ -12,7 +12,8 @@
     "restore": "bash scripts/restore.sh",
     "test": "node scripts/check_frontend.js && node --test --test-concurrency=1 \"tests/unit/**/*.test.js\" \"tests/api/**/*.test.js\"",
     "a11y": "node scripts/a11y_drill.js",
-    "check:frontend": "node scripts/check_frontend.js"
+    "check:frontend": "node scripts/check_frontend.js",
+    "audit": "node scripts/audit_gate.js"
   },
   "engines": {
     "node": ">=20"

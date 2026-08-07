@@ -1,6 +1,25 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **214/214 green** · `npm audit`: 0 vulnerabilities
+## PULSE ↔ SDP Dashboard integration (2026-08-07)
+Phases 0, 1, 2 and 4 built and tested; migrations 030–034. See the commit for
+the full breakdown. Key points:
+- The prompt's §2 was stale on one fact: migrations ended at 029, not 020, so
+  the identity spine is 030 and capacity is 032, not 021/022.
+- `sdp_dashboard` is NOT reachable from this environment, so `sdp_fdw` is a
+  local staging schema of the exact foreign-table shape. Every mart view,
+  the import job, the API and the UI are identical either way — connecting the
+  real source is `scripts/setup_sdp_fdw.js`, a configuration step, not a code
+  change. Every SDP-backed endpoint returns 503 BLOCKED_EXTERNAL when the
+  source is absent, and the capacity screen still renders from the local copy.
+- GATE 0 cannot be closed here: the coverage query needs the real ticket
+  history, and Q1 (canonical code for Ity and Ouagadougou) is a human decision.
+  Q1–Q7 are all still open and are listed in the handover.
+- Real bug found by the new tests: the mart joined tickets to EVERY alias row,
+  so a person with two confirmed spellings had tickets and hours DOUBLED
+  (migration 034).
+
+
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **235/235 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
