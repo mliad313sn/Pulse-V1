@@ -182,8 +182,16 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
   documented; deleted routes disappear) at /api/v1/openapi.json, plus the
   event catalogue at /api/v1/events/catalogue. REMAINING: Jira/ADO/
   ServiceNow/Teams/PowerBI/ERP/HRIS/SCIM adapters (BLOCKED_EXTERNAL contracts).
-- **P11 UX**: configurable views (board/timeline/Gantt/heatmap/graph);
-  progressive disclosure per role.
+- **P11 UX — PARTIAL**: Gantt drawn from the CPM's COMPUTED early dates
+  (critical / near-critical / past-deadline / done colouring, month ticks,
+  constraint violations listed) and a kanban board, both switchable in the
+  project Plan tab over the same /plan payload — no second source of truth.
+  Resource heatmap shipped with P3 (#/capacity). Verified in a real browser
+  (screenshots), not assumed. Added `npm run check:frontend`: every browser
+  module is parsed as an ES MODULE and the check gates `npm test` — `node
+  --check` parses as CommonJS and had accepted a mis-nested template literal
+  the browser refused. REMAINING: decision-graph visualization, timeline/
+  calendar views, saved configurable views.
 - **P12 Scale/ops**: Redis coordination; outbox/DLQ; OpenTelemetry; PITR;
   SLOs; performance tests.
 

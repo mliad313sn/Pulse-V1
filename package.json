@@ -10,8 +10,9 @@
     "seed": "node src/db/seed.js",
     "backup": "bash scripts/backup.sh",
     "restore": "bash scripts/restore.sh",
-    "test": "node --test --test-concurrency=1 \"tests/unit/**/*.test.js\" \"tests/api/**/*.test.js\"",
-    "a11y": "node scripts/a11y_drill.js"
+    "test": "node scripts/check_frontend.js && node --test --test-concurrency=1 \"tests/unit/**/*.test.js\" \"tests/api/**/*.test.js\"",
+    "a11y": "node scripts/a11y_drill.js",
+    "check:frontend": "node scripts/check_frontend.js"
   },
   "engines": {
     "node": ">=20"

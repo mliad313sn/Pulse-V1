@@ -2,9 +2,11 @@
 import { api, state } from "../lib/api.js";
 import { esc, fmtDate, isoDate, ragDot, avatar, modal, toast, showError, optionList, emptyState } from "../lib/ui.js";
 import { exportProjectDeck } from "../lib/deck.js";
+import { renderGantt, renderBoard } from "./gantt.js";
 
 const STAGES = ["IDEA", "INITIATION", "PLANNING", "EXECUTION", "DEPLOYMENT", "RUN"];
 let activeTab = "timeline";
+let planView = "list";
 
 export async function renderProject(container, projectId) {
   const d = await api.get(`/api/v1/projects/${projectId}`);
@@ -550,6 +552,13 @@ function planTab(d, canFull, reload) {
     const critical = new Set(plan.criticalPath.criticalIds || []);
     const wsName = Object.fromEntries(plan.workstreams.map((w) => [w.id, w.title]));
     wrap.innerHTML = `<div class="panel">
+      <div class="plan-views">
+        ${["list", "gantt", "board"].map((v) =>
+          `<button class="btn small plan-view ${v === planView ? "primary" : ""}" data-view="${v}">${
+            v === "list" ? "☰ List" : v === "gantt" ? "▤ Gantt" : "▦ Board"}</button>`).join("")}
+      </div>
+      ${planView !== "list" ? (planView === "gantt" ? renderGantt(plan) : renderBoard(plan)) : ""}
+      ${planView !== "list" ? "" : `
       ${canFull ? `<div class="quickadd">
         <input type="text" id="ws-title" placeholder="Add workstream… (Enter)">
         <select id="ws-lead">${optionList(state.meta.users.filter((u) => u.role !== "VIEWER"), "id", (u) => u.name, "", "Lead…")}</select>
@@ -580,8 +589,12 @@ function planTab(d, canFull, reload) {
           <td class="muted">${plan.criticalPath.slack ? (plan.criticalPath.slack[t.id] ?? "—") + "d" : "—"}</td>
           <td><select data-task="${t.id}" data-ua="${t.updated_at}">
             ${["NOT_STARTED", "IN_PROGRESS", "BLOCKED", "DONE", "CANCELLED"].map((st) => `<option ${t.status === st ? "selected" : ""}>${st}</option>`).join("")}
-          </select></td></tr>`).join("")}</table>` : emptyState("▦", "No tasks yet.", canFull ? "Add tasks above; link dependencies via the API or upcoming Gantt view." : "")}
+          </select></td></tr>`).join("")}</table>` : emptyState("▦", "No tasks yet.", canFull ? "Add tasks above, then switch to Gantt or Board." : "")}
+      `}
     </div>`;
+    wrap.querySelectorAll(".plan-view").forEach((b) => {
+      b.onclick = () => { planView = b.dataset.view; reload(); };
+    });
     const wsAdd = wrap.querySelector("#ws-title");
     if (wsAdd) wsAdd.addEventListener("keydown", async (e) => {
       if (e.key !== "Enter" || !wsAdd.value.trim()) return;

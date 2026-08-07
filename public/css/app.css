@@ -577,3 +577,36 @@ button.inline-link { background:none; border:none; font:inherit; padding:0; }
 .cap-cell.cap-free { background: var(--surface); color: var(--ink-faint); }
 .cap-tent { margin-left: 4px; font-size: .74rem; color: var(--rag-amber-text); font-weight: 700; }
 .cap-leave { margin-left: 4px; font-size: .74rem; opacity: .75; }
+
+/* ===== SPM P11 — Gantt + board ===== */
+.plan-views { display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.gantt { font-size: .8rem; overflow-x: auto; }
+.g-row { display: flex; align-items: center; min-height: 26px; }
+.g-label { width: 260px; flex: 0 0 260px; padding-right: 10px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.g-label .muted { font-size: .74rem; margin-left: 4px; }
+.g-track { position: relative; flex: 1 1 auto; height: 20px; min-width: 320px;
+  background: linear-gradient(to right, var(--surface) 0, var(--surface) 100%);
+  border-left: 1px solid var(--line); }
+.g-ticks .g-track { height: 16px; border-left: none; }
+.g-tick { position: absolute; top: 0; font-size: .68rem; color: var(--ink-faint);
+  border-left: 1px solid var(--line); padding-left: 3px; height: 100%; }
+.g-bar { position: absolute; top: 3px; height: 14px; border-radius: 3px; color: #fff;
+  font-size: .68rem; line-height: 14px; padding: 0 4px; overflow: hidden; white-space: nowrap; }
+.g-bar.g-normal { background: var(--edv-navy); }
+.g-bar.g-critical { background: var(--rag-red); }
+.g-bar.g-near { background: var(--edv-orange, #e08a1e); }
+.g-bar.g-late { background: #7a0f22; }
+.g-bar.g-done { background: var(--rag-green); }
+.g-flag { color: var(--rag-red); }
+.g-legend { display: flex; gap: 14px; margin-top: 10px; font-size: .76rem; color: var(--ink-faint); }
+.g-legend i { display: inline-block; position: static; width: 14px; height: 10px;
+  border-radius: 2px; margin-right: 4px; }
+.g-violations { margin: 10px 0 0 18px; font-size: .8rem; color: var(--rag-red-text); }
+.board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.board-col h4 { font-size: .74rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--ink-faint); margin: 0 0 8px; }
+.board-card { background: var(--surface-card); border: 1px solid var(--line);
+  border-radius: 6px; padding: 8px; margin-bottom: 6px; font-size: .82rem; cursor: pointer; }
+.board-card .muted { font-size: .74rem; }
+.board-empty { font-size: .8rem; }
