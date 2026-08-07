@@ -207,4 +207,71 @@ async function siteLens(user, siteCode) {
   };
 }
 
-module.exports = { divisionWorkload, ragTrend, roadblockAging, actionResolution, siteBreakdown, siteLens };
+// E22 — Executive Command Center (plan §48): what needs attention, decisions
+// waiting, go-lives, trend, site health, resource pressure, financial position.
+// Every block reuses the same scoped queries as the interactive views.
+async function executive(user) {
+  const params = [];
+  const scope = scopeClauses(user, null, params);
+  const [attention, gatesWaiting, goLives, overdueWork, trend, sites] = await Promise.all([
+    query(
+      `SELECT p.id, p.code, p.title, coalesce(p.rag_override, p.rag_computed) AS rag,
+              p.rag_signals_json, p.stage, pm.name AS pm_name, p.target_date
+         FROM projects p LEFT JOIN users pm ON pm.id = p.project_manager_id
+        WHERE ${scope} AND p.stage <> 'CLOSED' AND p.operating_status <> 'CANCELLED'
+          AND coalesce(p.rag_override, p.rag_computed) = 'R'
+        ORDER BY p.priority, p.target_date NULLS LAST LIMIT 10`, params),
+    query(
+      `SELECT p.id, p.code, p.title FROM projects p
+        WHERE ${scope} AND p.stage = 'PLANNING' AND p.operating_status = 'IN_PROGRESS'
+          AND EXISTS (SELECT 1 FROM milestones m WHERE m.project_id = p.id AND m.deleted_at IS NULL)
+          AND EXISTS (SELECT 1 FROM deliverables d WHERE d.project_id = p.id AND d.deleted_at IS NULL)
+          AND EXISTS (SELECT 1 FROM risks r WHERE r.project_id = p.id AND r.deleted_at IS NULL)
+        LIMIT 10`, params),
+    query(
+      `SELECT m.title, m.due_date, p.code, p.title AS project_title, p.id AS project_id
+         FROM milestones m JOIN projects p ON p.id = m.project_id
+        WHERE ${scope} AND m.deleted_at IS NULL AND m.type = 'GO_LIVE' AND m.status <> 'DONE'
+          AND m.due_date BETWEEN (now() AT TIME ZONE 'utc')::date AND (now() AT TIME ZONE 'utc')::date + 45
+        ORDER BY m.due_date LIMIT 10`, params),
+    query(
+      `SELECT
+        (SELECT count(*)::int FROM milestones m JOIN projects p ON p.id = m.project_id
+          WHERE ${scope} AND m.deleted_at IS NULL AND m.status NOT IN ('DONE','CANCELLED')
+            AND m.due_date < (now() AT TIME ZONE 'utc')::date) AS overdue_milestones,
+        (SELECT count(*)::int FROM actions a JOIN projects p ON p.id = a.project_id
+          WHERE ${scope} AND a.deleted_at IS NULL AND a.status = 'OPEN'
+            AND a.due_date < (now() AT TIME ZONE 'utc')::date) AS overdue_actions,
+        (SELECT count(*)::int FROM roadblocks r JOIN projects p ON p.id = r.project_id
+          WHERE ${scope} AND r.deleted_at IS NULL AND r.status <> 'RESOLVED' AND r.severity = 'CRITICAL') AS critical_roadblocks,
+        (SELECT count(*)::int FROM capas c JOIN projects p ON p.id = c.project_id
+          WHERE ${scope} AND c.deleted_at IS NULL AND c.status <> 'CLOSED'
+            AND c.due_date < (now() AT TIME ZONE 'utc')::date) AS overdue_capas`, params),
+    ragTrend(user, null, 12),
+    siteBreakdown(user),
+  ]);
+  const resources = require("../resources/service");
+  const overloaded = await resources.workload(user, { overloadedOnly: true });
+  // financial position only for finance-authorized eyes (plan §145)
+  let finance = null;
+  if (user.role === "ADMIN" || user.finance_access === true) {
+    const fin = await query(
+      `SELECT coalesce(sum(bl.approved),0)::float AS approved, coalesce(sum(bl.forecast),0)::float AS forecast
+         FROM budget_lines bl JOIN projects p ON p.id = bl.project_id
+        WHERE ${scope} AND bl.deleted_at IS NULL AND p.stage <> 'CLOSED'`, params);
+    const f = fin.rows[0];
+    finance = { approved: f.approved, forecast: f.forecast, variance: f.forecast - f.approved };
+  }
+  return {
+    attention: attention.rows.map((p) => ({
+      ...p,
+      why: Object.values(p.rag_signals_json || {}).filter((x) => x.value === "R").map((x) => x.detail).join("; ") || "manual override",
+    })),
+    gatesWaiting: gatesWaiting.rows,
+    goLives: goLives.rows,
+    exceptions: overdueWork.rows[0],
+    trend, sites, overloaded, finance,
+  };
+}
+
+module.exports = { divisionWorkload, ragTrend, roadblockAging, actionResolution, siteBreakdown, siteLens, executive };

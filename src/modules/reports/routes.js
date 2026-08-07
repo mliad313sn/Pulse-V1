@@ -33,6 +33,11 @@ router.get("/site-breakdown", async (req, res, next) => {
   catch (err) { next(err); }
 });
 
+router.get("/executive", async (req, res, next) => {
+  try { res.json(await service.executive(req.user)); }
+  catch (err) { next(err); }
+});
+
 router.get("/site-lens", async (req, res, next) => {
   try {
     if (!req.query.site) return res.status(400).json({ error: "site query parameter required" });

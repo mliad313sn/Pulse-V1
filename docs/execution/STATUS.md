@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **96/96 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **97/97 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -40,9 +40,15 @@ risk+Steering). Hold/cancel need reasons; cancelled terminal; CLOSED sets COMPLE
 Freshness exemption now stage RUN/CLOSED or op-status ON_HOLD/CANCELLED/COMPLETED.
 Channel dispatch made commit-race tolerant (FK retry then unlinked ledger row).
 
+## Completed: E22 Executive Command Center (2026-08-07)
+`GET /api/v1/reports/executive` composes attention (RED + explained why from
+rag_signals_json), gates awaiting Steering, go-lives ≤45d, exception counts,
+RAG trend, site health, overloaded people, and a finance block that is
+server-side masked (null) for anyone without ADMIN/finance_access — verified
+by leak-string assertion in finance.test §4. Frontend `#/exec` view wired.
+
 ## Next executable work items (dependency order)
 4. **E04 finish**: pillars/portfolios/programs entities + portfolio filter.
-6. **E22**: Executive Command Center view; KPI drill-throughs.
 8. **E28**: i18n string extraction (EN/FR) then axe automation.
 9. **E23**: server-side export service + PDF + seeded leak tests.
 10. **E15**: WebSocket presenter sync.

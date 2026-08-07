@@ -76,3 +76,22 @@ test("benefits: FULL access defines, owner updates progress, statuses tracked", 
   assert.equal(list.body.benefits.length, 1);
   assert.equal(Number(list.body.benefits[0].actual), 22);
 });
+
+test("E22 executive command center: composed, scoped, finance masked for unauthorized", async () => {
+  // make a RED project (critical roadblock) + go-live + gate-ready project exist
+  await admin.post(`/api/v1/projects/${project.id}/roadblocks`).send({ title: "Exec critical", severity: "CRITICAL" });
+  await admin.post(`/api/v1/projects/${project.id}/milestones`)
+    .send({ title: "Prod go-live", type: "GO_LIVE", due_date: new Date(Date.now() + 20 * 86400000).toISOString().slice(0, 10) });
+  const execAdmin = await admin.get("/api/v1/reports/executive");
+  assert.equal(execAdmin.status, 200);
+  assert.ok(execAdmin.body.attention.some((p) => p.id === project.id), "red project in attention list");
+  assert.match(execAdmin.body.attention.find((p) => p.id === project.id).why, /critical roadblock/i);
+  assert.ok(execAdmin.body.goLives.some((g) => g.title === "Prod go-live"));
+  assert.ok(execAdmin.body.finance, "admin sees financial position");
+  assert.equal(execAdmin.body.finance.variance, 12000);
+  // non-finance viewer: same endpoint, finance block absent
+  const execViewer = await viewer.get("/api/v1/reports/executive");
+  assert.equal(execViewer.status, 200);
+  assert.equal(execViewer.body.finance, null, "finance masked");
+  assert.ok(!JSON.stringify(execViewer.body).includes("112000"), "no financial figure leaks");
+});

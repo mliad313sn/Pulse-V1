@@ -9,6 +9,7 @@ import { renderMyActions } from "./views/myActions.js";
 import { renderReports } from "./views/reports.js";
 import { renderAdmin } from "./views/admin.js";
 import { renderWarRoom } from "./views/warRoom.js";
+import { renderExecutive } from "./views/executive.js";
 import { flush, countQueued, isBlocked, retryAfterReview, discardHead } from "./lib/syncQueue.js";
 
 const app = document.getElementById("app");
@@ -97,6 +98,7 @@ function shell(active, contentNode) {
     ["sites", "◎ Sites", "#/sites"],
     ["my", "☑ My Actions", "#/my"],
     ["warroom", "⚑ War Room", "#/warroom"],
+    ["exec", "◆ Executive", "#/exec"],
     ["reports", "📊 Reports", "#/reports"],
   ];
   if (u.role === "ADMIN") nav.push(["admin", "⚙ Admin", "#/admin"]);
@@ -254,6 +256,7 @@ const routes = [
   [/^#\/sites(?:\/(\w+))?/, "sites", renderSiteLens],
   [/^#\/my/, "my", renderMyActions],
   [/^#\/warroom/, "warroom", renderWarRoom],
+  [/^#\/exec/, "exec", renderExecutive],
   [/^#\/reports/, "reports", renderReports],
   [/^#\/admin/, "admin", renderAdmin],
 ];
