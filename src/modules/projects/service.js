@@ -66,12 +66,25 @@ function assertOverrideValid(ragOverride, reason) {
   }
 }
 
+// SPM P5 — physical progress is a human judgement, not a computed figure, so
+// it only counts with a written justification (the database enforces the same
+// rule; this turns the violation into a helpful 400 instead of a 500).
+function assertProgressValid(after) {
+  if (after.progress_method === "PHYSICAL" && after.progress_manual != null) {
+    const note = (after.progress_manual_note || "").trim();
+    if (note.length < 10) {
+      throw badRequest("Physical progress must be justified — write at least 10 characters explaining how it was assessed");
+    }
+  }
+}
+
 const PROJECT_FIELDS = [
   "title", "description", "lead_division_id", "project_manager_id", "sponsor", "stage",
   "operating_status", "hold_reason", "cancel_reason",
   "priority", "start_date", "target_date", "actual_end_date", "budget_note",
   "roadmap_pillar", "confidential", "rag_override", "rag_override_reason", "exec_commentary",
   "portfolio_id", "program_id", "governance",
+  "progress_method", "progress_manual", "progress_manual_note",
 ];
 
 async function createProject(actor, input) {
@@ -164,6 +177,7 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
   for (const f of PROJECT_FIELDS) if (patch[f] !== undefined) after[f] = patch[f];
   assertOverrideValid(after.rag_override, after.rag_override_reason);
   if (after.rag_override == null) after.rag_override_reason = null;
+  assertProgressValid(after);
   if (patch.project_manager_id !== undefined && patch.project_manager_id !== project.project_manager_id) {
     await assertValidPM({ query }, patch.project_manager_id);
   }
@@ -204,7 +218,8 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
          budget_note=$13, roadmap_pillar=$14, confidential=$15, rag_override=$16,
          rag_override_reason=$17, exec_commentary=$18, operating_status=$19,
          hold_reason=$20, cancel_reason=$21, portfolio_id=$22, program_id=$23,
-         governance=$24, custom_json=$25, updated_at=now()
+         governance=$24, custom_json=$25, progress_method=$26,
+         progress_manual=$27, progress_manual_note=$28, updated_at=now()
        WHERE id=$1 AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $2::timestamptz) AND deleted_at IS NULL
        RETURNING *`,
       [
@@ -216,6 +231,8 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
         after.operating_status, after.hold_reason, after.cancel_reason,
         after.portfolio_id, after.program_id, after.governance,
         JSON.stringify(after.custom_json || {}),
+        after.progress_method || "MILESTONE", after.progress_manual ?? null,
+        after.progress_manual_note || null,
       ]
     );
     if (res.rows.length === 0) {

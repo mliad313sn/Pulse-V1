@@ -92,6 +92,7 @@ function createApp(options = {}) {
   app.use("/api/v1", require("./modules/graph/routes"));
   app.use("/api/v1", require("./modules/intelligence/routes"));
   app.use("/api/v1", require("./modules/platform/routes"));
+  app.use("/api/v1", require("./modules/rag/routes").health);
   app.use("/api/v1/sync", require("./modules/sync/routes").router);
 
   // Reference data for pickers (any authenticated user)

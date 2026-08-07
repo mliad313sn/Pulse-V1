@@ -89,14 +89,20 @@ async function createTask(actor, projectAccess, input) {
   }
   return withTransaction(async (client) => {
     const { rows } = await client.query(
+      // status is accepted on create (importing a plan that is already partly
+      // done is normal); DONE always means zero remaining effort, exactly as
+      // on update, so progress-by-effort cannot be fooled by a stale estimate.
       `INSERT INTO tasks (project_id, workstream_id, milestone_id, title, description, owner_user_id,
-         planned_start, planned_finish, estimated_hours, remaining_hours, parent_task_id, priority, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+         planned_start, planned_finish, estimated_hours, remaining_hours, parent_task_id, priority,
+         status, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
       [projectAccess.project.id, input.workstream_id || null, input.milestone_id || null,
        input.title, input.description || null, input.owner_user_id || null,
        input.planned_start || null, input.planned_finish || null,
-       input.estimated_hours ?? null, input.remaining_hours ?? input.estimated_hours ?? null,
-       input.parent_task_id || null, input.priority || "P2", actor.id]
+       input.estimated_hours ?? null,
+       input.status === "DONE" ? 0 : (input.remaining_hours ?? input.estimated_hours ?? null),
+       input.parent_task_id || null, input.priority || "P2",
+       input.status || "NOT_STARTED", actor.id]
     );
     const task = rows[0];
     await audit.recordCreate(client, "task", task.id, actor.id);

@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **176/176 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **189/189 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -115,9 +115,20 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
   explainable, honest n/a without actuals, AC FX-converted, EV from computed
   milestone progress). FX/multicurrency from P0. REMAINING: vendor/PO/contract
   linkage; benefit realization periods + post-closure observations.
-- **P5 Health 2.0**: weighted multi-dimensional signals (schedule/finance/
-  resources/risks/governance/benefits/confidence) with record-level links;
-  progress methodologies (effort/cost/EVM).
+- **P5 Health 2.0 — DONE (core)**: GET /projects/:id/health scores seven
+  weighted dimensions (schedule 25, risks 15, finance 15, governance 15,
+  resources 10, benefits 10, confidence 10) by CRITICALITY not counts — a
+  late GO_LIVE outweighs a late checkpoint, a 25/25 risk outweighs five
+  trivial ones — and every dimension returns the actual records that moved
+  it. Finance without the flag is DROPPED and its weight redistributed
+  (masking never fabricates a bad score). Reconciles honestly with the
+  operational RAG instead of creating a second source of truth for the wall.
+  Migration 025 adds progress methodologies (MILESTONE default, TASK, EFFORT,
+  COST, PHYSICAL) — every progress number reports its own basis, and PHYSICAL
+  requires a written justification (DB CHECK + a helpful 400). Health panel in
+  the project room with per-dimension evidence. Also fixed: task create
+  advertised `status` but silently dropped it (DONE now also zeroes remaining
+  effort, so progress-by-effort can't be fooled).
 - **P6 Scenarios & optimization — DONE (core)**: scenario objects (DEFER/
   STOP/BUDGET_DELTA moves, migration 021) with pure zero-mutation evaluation
   (schedule shifts, freed budget; money masked without finance flag);

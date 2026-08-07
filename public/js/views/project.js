@@ -89,6 +89,9 @@ export async function renderProject(container, projectId) {
             ${canFull ? '<button class="btn small" id="override-btn">Set / clear override</button>' : ""}
           </div>
         </div>
+        <div class="panel" id="health-panel"><h3>Health 2.0</h3>
+          <div class="panel-body muted" style="font-size:.84rem">Loading…</div>
+        </div>
       </div>
     </div>`;
 
@@ -129,6 +132,9 @@ export async function renderProject(container, projectId) {
       reload();
     } catch (err) { showError(err); if (err.status === 409) reload(); }
   };
+  // SPM P5 — Health 2.0: weighted dimensions, each naming its evidence
+  renderHealthPanel(container.querySelector("#health-panel"), p.id);
+
   // SPM P9 — AI draft (only offered when the deployment has a key; the draft
   // lands in the textarea for human review, it is never auto-saved)
   const aiSlot = container.querySelector("#ai-draft-slot");
@@ -156,6 +162,47 @@ export async function renderProject(container, projectId) {
   if (editBtn) editBtn.onclick = () => editProjectModal(d, reload);
   const ovrBtn = container.querySelector("#override-btn");
   if (ovrBtn) ovrBtn.onclick = () => overrideModal(p, reload);
+}
+
+const DIM_LABELS = {
+  schedule: "Schedule", risks: "Risks & blockers", finance: "Finance",
+  governance: "Governance", resources: "Resources", benefits: "Benefits",
+  confidence: "Data confidence",
+};
+
+// SPM P5 — every dimension shows its score, its weight, and the actual records
+// behind it. A red number is never a mystery.
+async function renderHealthPanel(panel, projectId) {
+  if (!panel) return;
+  const body = panel.querySelector(".panel-body");
+  let h;
+  try { h = await api.get(`/api/v1/projects/${projectId}/health`); }
+  catch { body.textContent = "Health could not be computed."; return; }
+
+  const pill = (b) => (b === "G" ? "DONE" : b === "A" ? "MAJOR" : "SLIPPED");
+  body.classList.remove("muted");
+  body.innerHTML = `
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+      <span class="pill ${pill(h.band)}" style="font-size:1rem">${h.score}/100</span>
+      <span class="muted">weighted across ${Object.keys(h.dimensions).length} dimensions</span>
+    </div>
+    <div style="margin-bottom:8px">Progress <b>${h.progress.pct}%</b>
+      <span class="muted">(${esc(h.progress.method.toLowerCase())} — ${esc(h.progress.basis)})</span></div>
+    ${Object.entries(h.dimensions).map(([k, d]) => `
+      <details style="border-top:1px solid var(--line);padding-top:6px">
+        <summary style="cursor:pointer">
+          <span class="pill ${pill(d.band)}">${d.score}</span>
+          ${esc(DIM_LABELS[k] || k)} <span class="muted">·${d.weight}% weight — ${esc(d.detail)}</span>
+        </summary>
+        ${d.contributors.length ? `<ul style="margin:6px 0 0 18px;font-size:.82rem">
+          ${d.contributors.map((c) => `<li>${esc(c.label)} <span class="muted">— ${esc(c.why)}</span></li>`).join("")}
+        </ul>` : `<div class="muted" style="margin-left:18px;font-size:.82rem">Nothing counting against this dimension.</div>`}
+      </details>`).join("")}
+    ${h.maskedDimensions.length ? `<div class="muted" style="margin-top:8px;font-size:.8rem">
+      ${h.maskedDimensions.join(", ")} not shown — finance access required. Its weight is redistributed,
+      not assumed bad.</div>` : ""}
+    <div class="muted" style="border-top:1px solid var(--line);margin-top:8px;padding-top:6px;font-size:.8rem">
+      ${esc(h.reconciliation)}</div>`;
 }
 
 function editProjectModal(d, reload) {

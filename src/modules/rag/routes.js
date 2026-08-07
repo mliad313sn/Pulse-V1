@@ -1,6 +1,6 @@
 "use strict";
 const express = require("express");
-const { requireAuth, requireRole } = require("../../middleware/authz");
+const { requireAuth, requireRole, withProjectAccess } = require("../../middleware/authz");
 const { recompute } = require("./service");
 const { query } = require("../../db/pool");
 
@@ -17,3 +17,15 @@ router.post("/recompute-all", requireRole("ADMIN"), async (req, res, next) => {
 });
 
 module.exports = router;
+module.exports.health = (() => {
+  // SPM P5 — Health 2.0 lives on the project resource, so it is mounted with
+  // the other /projects routes rather than under /rag.
+  const r = express.Router();
+  r.use(requireAuth);
+  r.get("/projects/:projectId/health", withProjectAccess(), async (req, res, next) => {
+    try {
+      res.json(await require("./healthService").projectHealth(req.user, req.projectAccess));
+    } catch (err) { next(err); }
+  });
+  return r;
+})();
