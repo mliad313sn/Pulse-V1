@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **209/209 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **214/214 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -189,8 +189,19 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
   a webhook can never bypass confidentiality or finance masking. OpenAPI 3.1
   document GENERATED from the live Express router (a route that exists is
   documented; deleted routes disappear) at /api/v1/openapi.json, plus the
-  event catalogue at /api/v1/events/catalogue. REMAINING: Jira/ADO/
-  ServiceNow/Teams/PowerBI/ERP/HRIS/SCIM adapters (BLOCKED_EXTERNAL contracts).
+  event catalogue at /api/v1/events/catalogue. COMPLETED (migrations 028–029): integration adapter
+  registry — Jira, Azure DevOps, ServiceNow, Teams, Power BI, ERP, HRIS and
+  SCIM each declare their capabilities, required credentials and their
+  system's IMMUTABLE identity field; an unconfigured adapter reports
+  BLOCKED_EXTERNAL and REFUSES to link rather than silently storing a mapping
+  into a system it cannot reach. A built-in `local` adapter implements the
+  same contract so the model is exercised for real, not mocked. External
+  identity mapping is anchored on the external immutable id: the human-facing
+  key (PROJ-123) may drift and is refreshed, but re-pointing a link at a
+  different external record is a 409 — unlink deliberately first. Linking
+  requires FULL project rights and concealment holds (404, not 403).
+  Migration 029 fixes a real flaw in 028: the unique constraints counted
+  soft-deleted rows, making re-linking after an unlink impossible.
 - **P11 UX — PARTIAL**: Gantt drawn from the CPM's COMPUTED early dates
   (critical / near-critical / past-deadline / done colouring, month ticks,
   constraint violations listed) and a kanban board, both switchable in the
