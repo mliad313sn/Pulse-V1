@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **104/104 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **107/107 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -81,8 +81,14 @@ Deps: exceljs+pdfkit+pptxgenjs added (uuid overridden to ^11 — audit stays 0).
 
 ## Next executable work items (dependency order)
 10. **E15**: WebSocket presenter sync.
-11. **E06**: baselines + change requests.
 12. **E30**: release qualification per §108 journeys.
+
+## Completed: E06 change control + baselines (2026-08-07)
+Immutable versioned baseline snapshots (v1 = original; dates + approved budget
++ milestone plan); change requests (6 types, rationale enforced) decided only
+by Steering/Admin with optimistic locking; approval auto-captures the next
+baseline in-transaction, rejection never does; forecast edits leave history
+untouched; Steering notified on submission; Project Room "Changes" tab.
 
 ## How to resume (future session)
 Read this file + REQUIREMENT_TRACEABILITY.md + DECISIONS.md, run `npm test`,

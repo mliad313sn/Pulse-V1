@@ -51,6 +51,7 @@ export async function renderProject(container, projectId) {
           <button data-tab="actions">Actions</button>
           <button data-tab="updates">Updates &amp; Decisions</button>
           <button data-tab="deliverables">Deliverables</button>
+          <button data-tab="changes">Changes</button>
         </div>
         <div id="tab-content"></div>
       </div>
@@ -87,6 +88,7 @@ export async function renderProject(container, projectId) {
     actions: () => actionsTab(d, canPartial, reload),
     updates: () => updatesTab(d, canFull, canPartial, reload),
     deliverables: () => deliverablesTab(d, canFull, reload),
+    changes: () => changesTab(d, canFull, canPartial, reload),
   };
   container.querySelectorAll(".tabs button").forEach((b) => {
     b.classList.toggle("active", b.dataset.tab === activeTab);
@@ -594,6 +596,111 @@ function deliverablesTab(d, canFull, reload) {
         },
       });
     });
+  });
+  return wrap;
+}
+
+// ===== E06 — Change control + baselines tab =====
+function changesTab(d, canFull, canPartial, reload) {
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `<div class="panel"><div class="panel-body muted">Loading change control…</div></div>`;
+  const u = state.user;
+  const canDecide = u.role === "ADMIN" || u.isSteeringCommittee === true;
+  const pid = d.project.id;
+
+  Promise.all([
+    api.get(`/api/v1/projects/${pid}/baselines`),
+    api.get(`/api/v1/projects/${pid}/change-requests`),
+  ]).then(([bl, crs]) => {
+    const pillFor = (s) => s === "APPROVED" ? "DONE" : s === "REJECTED" ? "SLIPPED" : "MAJOR";
+    wrap.innerHTML = `
+      <div class="panel">
+        <h3 style="padding:10px 14px 0">Baselines <span class="muted">(immutable snapshots — forecast lives on the project)</span></h3>
+        <div class="panel-body">
+        ${bl.baselines.length ? `<table class="ms-list">
+          <tr><th>V</th><th>Label</th><th>Target date</th><th>Budget approved</th><th>Milestones</th><th>Captured</th></tr>
+          ${bl.baselines.map((b) => `<tr>
+            <td><b>v${b.version}</b></td><td>${esc(b.label)}${b.change_title ? `<br><span class="muted">CR: ${esc(b.change_title)}</span>` : ""}</td>
+            <td>${fmtDate(b.target_date)}</td>
+            <td>${b.budget_approved != null ? Number(b.budget_approved).toLocaleString("en-US") : "—"}</td>
+            <td>${(b.milestones_json || []).length}</td>
+            <td class="muted">${fmtDate(b.created_at)} · ${esc(b.created_by_name || "")}</td>
+          </tr>`).join("")}</table>
+          <div class="muted" style="margin-top:6px">Current forecast target: <b>${fmtDate(bl.forecast.target_date)}</b></div>`
+          : emptyState("▣", "No baseline captured yet.", canFull ? "Capture v1 before execution starts." : "")}
+        ${canFull ? '<button class="btn small" id="capture-bl" style="margin-top:8px">Capture baseline</button>' : ""}
+        </div>
+      </div>
+      <div class="panel" style="margin-top:14px">
+        <h3 style="padding:10px 14px 0">Change requests</h3>
+        <div class="panel-body">
+        ${canPartial || canFull ? '<button class="btn navy small" id="new-cr">＋ New change request</button>' : ""}
+        ${crs.changeRequests.length ? `<ul class="simple-list" style="margin-top:8px">
+          ${crs.changeRequests.map((c) => `<li>
+            <span class="pill ${pillFor(c.status)}">${c.status}</span>
+            <b>${esc(c.title)}</b> <span class="chip div">${c.type}</span><br>
+            <span class="muted">${esc(c.rationale)}</span>
+            ${c.schedule_impact_days ? `<br><span class="muted">Schedule impact: ${c.schedule_impact_days}d</span>` : ""}
+            ${c.cost_impact ? `<br><span class="muted">Cost impact: ${Number(c.cost_impact).toLocaleString("en-US")}</span>` : ""}
+            ${c.status !== "PENDING" ? `<br><span class="muted">Decision by ${esc(c.approver_name || "—")}: ${esc(c.decision_note || "")}</span>` : ""}
+            ${c.status === "PENDING" && canDecide ? `
+              <br><button class="btn small" data-decide="APPROVED" data-cr="${c.id}" data-ua="${c.updated_at}">Approve</button>
+              <button class="btn small ghost-danger" data-decide="REJECTED" data-cr="${c.id}" data-ua="${c.updated_at}">Reject</button>` : ""}
+          </li>`).join("")}</ul>`
+          : `<div class="muted" style="margin-top:8px">No change requests. Material scope/schedule/budget changes need one.</div>`}
+        </div>
+      </div>`;
+
+    const cap = wrap.querySelector("#capture-bl");
+    if (cap) cap.onclick = () => modal({
+      title: "Capture baseline",
+      body: `<div class="field"><label>Label</label><input name="label" value="${bl.baselines.length ? "Re-baseline" : "Original baseline"}"></div>
+        <p class="muted">Snapshots current dates, approved budget and the milestone plan. Baselines are permanent.</p>`,
+      onSave: async (box) => {
+        await api.post(`/api/v1/projects/${pid}/baselines`, { label: box.querySelector("[name=label]").value });
+        toast("Baseline captured");
+        reload();
+      },
+    });
+
+    const ncr = wrap.querySelector("#new-cr");
+    if (ncr) ncr.onclick = () => modal({
+      title: "New change request",
+      body: `
+        <div class="field"><label>Type</label><select name="type">
+          ${["SCOPE","SCHEDULE","BUDGET","BENEFIT","RESOURCE","CANCELLATION"].map((t) => `<option>${t}</option>`).join("")}</select></div>
+        <div class="field"><label>Title</label><input name="title" required></div>
+        <div class="field"><label>Rationale (min 10 chars)</label><textarea name="rationale"></textarea></div>
+        <div class="frow">
+          <div class="field"><label>Schedule impact (days)</label><input name="sched" type="number"></div>
+          <div class="field"><label>Cost impact</label><input name="cost" type="number" step="0.01"></div>
+        </div>
+        <div class="field"><label>Affected milestones</label><input name="ms"></div>`,
+      onSave: async (box) => {
+        const v = (n) => box.querySelector(`[name=${n}]`).value;
+        await api.post(`/api/v1/projects/${pid}/change-requests`, {
+          type: v("type"), title: v("title"), rationale: v("rationale"),
+          schedule_impact_days: v("sched") ? Number(v("sched")) : null,
+          cost_impact: v("cost") ? Number(v("cost")) : null,
+          affected_milestones: v("ms") || null,
+        });
+        toast("Change request submitted — Steering Committee notified");
+        reload();
+      },
+    });
+
+    wrap.querySelectorAll("[data-decide]").forEach((b) => b.onclick = () => modal({
+      title: `${b.dataset.decide === "APPROVED" ? "Approve" : "Reject"} change request`,
+      body: `<div class="field"><label>Decision note (required)</label><textarea name="note"></textarea></div>
+        ${b.dataset.decide === "APPROVED" ? '<p class="muted">Approval captures a new baseline automatically.</p>' : ""}`,
+      onSave: async (box) => {
+        await api.post(`/api/v1/projects/${pid}/change-requests/${b.dataset.cr}/decision`, {
+          decision: b.dataset.decide, note: box.querySelector("[name=note]").value, updated_at: b.dataset.ua,
+        });
+        toast(`Change request ${b.dataset.decide.toLowerCase()}`);
+        reload();
+      },
+    }));
   });
   return wrap;
 }
