@@ -3,7 +3,7 @@
 **Generated from the live schema** by `scripts/generate_data_dictionary.js`.
 Do not edit by hand — regenerate after adding a migration so it cannot drift.
 
-Tables: 64. Every table carries `created_at`/`updated_at`; most carry
+Tables: 68. Every table carries `created_at`/`updated_at`; most carry
 `deleted_at` (soft delete — history is never destroyed) and `created_by`.
 
 ## actions
@@ -27,14 +27,14 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 
 **Rules enforced by the database:**
 - `CHECK ((status = ANY (ARRAY['OPEN'::text, 'DONE'::text, 'CANCELLED'::text])))`
-- `CHECK ((source = ANY (ARRAY['MEETING'::text, 'PROJECT'::text, 'ROADBLOCK'::text])))`
+- `CHECK ((source = ANY (ARRAY['MEETING'::text, 'PROJECT'::text, 'ROADBLOCK'::text, 'HELPDESK'::text, 'INSPECTION'::text, 'DEPT_MEETING'::text])))`
 
 **References:**
-- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (roadblock_id) REFERENCES roadblocks(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (roadblock_id) REFERENCES roadblocks(id) ON DELETE RESTRICT`
 
 ## attachments
 
@@ -58,16 +58,16 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `deleted_at` | timestamp with time zone | yes |  |
 
 **Rules enforced by the database:**
-- `CHECK ((entity_type = ANY (ARRAY['project'::text, 'milestone'::text, 'roadblock'::text, 'decision'::text, 'deliverable'::text, 'meeting'::text, 'task'::text, 'capa'::text, 'gate'::text])))`
 - `CHECK ((size_bytes >= 0))`
 - `CHECK ((classification = ANY (ARRAY['GENERAL'::text, 'CONFIDENTIAL'::text])))`
+- `CHECK ((entity_type = ANY (ARRAY['project'::text, 'milestone'::text, 'roadblock'::text, 'decision'::text, 'deliverable'::text, 'meeting'::text, 'task'::text, 'capa'::text, 'gate'::text])))`
 
 **Uniqueness:**
 - `UNIQUE (storage_key)`
 
 **References:**
-- `FOREIGN KEY (created_by) REFERENCES users(id)`
 - `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (created_by) REFERENCES users(id)`
 
 ## audit_log
 
@@ -84,6 +84,53 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 
 **References:**
 - `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT`
+
+## bau_load
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | bigint | no |  |
+| `user_id` | bigint | no |  |
+| `period` | character | no |  |
+| `source` | text | no |  |
+| `tickets` | integer | no | `0` |
+| `hours` | numeric | no | `0` |
+| `provenance` | text | no |  |
+| `source_system` | text | no | `'SDP'::text` |
+| `imported_at` | timestamp with time zone | no | `now()` |
+
+**Rules enforced by the database:**
+- `CHECK ((provenance = ANY (ARRAY['MEASURED'::text, 'MODELLED'::text, 'ESTIMATED'::text])))`
+- `CHECK ((period ~ '^[0-9]{4}-[0-9]{2}$'::text))`
+- `CHECK ((source = ANY (ARRAY['HELPDESK'::text, 'TRACKER'::text, 'INSPECTION'::text, 'MEETING'::text])))`
+- `CHECK ((tickets >= 0))`
+- `CHECK ((hours >= (0)::numeric))`
+
+**Uniqueness:**
+- `UNIQUE (user_id, period, source)`
+
+**References:**
+- `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT`
+
+## bau_unattributed
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | bigint | no |  |
+| `period` | character | no |  |
+| `site_code` | text | yes |  |
+| `reason` | text | no |  |
+| `tickets` | integer | no | `0` |
+| `source_system` | text | no | `'SDP'::text` |
+| `imported_at` | timestamp with time zone | no | `now()` |
+
+**Rules enforced by the database:**
+- `CHECK ((period ~ '^[0-9]{4}-[0-9]{2}$'::text))`
+- `CHECK ((reason = ANY (ARRAY['NO_TECHNICIAN'::text, 'UNRESOLVED_ALIAS'::text, 'NO_TECH_GROUP'::text, 'NO_PULSE_USER'::text])))`
+- `CHECK ((tickets >= 0))`
+
+**Uniqueness:**
+- `UNIQUE (period, site_code, reason)`
 
 ## benefit_measurements
 
@@ -108,8 +155,8 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 - `UNIQUE (benefit_id, period)`
 
 **References:**
-- `FOREIGN KEY (created_by) REFERENCES users(id)`
 - `FOREIGN KEY (benefit_id) REFERENCES benefits(id)`
+- `FOREIGN KEY (created_by) REFERENCES users(id)`
 
 ## benefits
 
@@ -136,14 +183,14 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `monetary` | boolean | no | `false` |
 
 **Rules enforced by the database:**
-- `CHECK ((measurement_frequency = ANY (ARRAY['MONTHLY'::text, 'QUARTERLY'::text, 'ANNUAL'::text])))`
-- `CHECK ((status = ANY (ARRAY['DEFINED'::text, 'ON_TRACK'::text, 'AT_RISK'::text, 'ACHIEVED'::text, 'MISSED'::text])))`
 - `CHECK (((realization_end IS NULL) OR (realization_start IS NULL) OR (realization_end >= realization_start)))`
+- `CHECK ((status = ANY (ARRAY['DEFINED'::text, 'ON_TRACK'::text, 'AT_RISK'::text, 'ACHIEVED'::text, 'MISSED'::text])))`
+- `CHECK ((measurement_frequency = ANY (ARRAY['MONTHLY'::text, 'QUARTERLY'::text, 'ANNUAL'::text])))`
 
 **References:**
-- `FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE RESTRICT`
 
 ## budget_lines
 
@@ -165,17 +212,17 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `deleted_at` | timestamp with time zone | yes |  |
 
 **Rules enforced by the database:**
-- `CHECK ((actual >= (0)::numeric))`
 - `CHECK ((committed >= (0)::numeric))`
-- `CHECK ((approved >= (0)::numeric))`
 - `CHECK ((capex_opex = ANY (ARRAY['CAPEX'::text, 'OPEX'::text])))`
+- `CHECK ((approved >= (0)::numeric))`
 - `CHECK ((forecast >= (0)::numeric))`
+- `CHECK ((actual >= (0)::numeric))`
 - `CHECK ((category = ANY (ARRAY['Hardware'::text, 'Software'::text, 'Professional Services'::text, 'Telecom'::text, 'Travel'::text, 'Training'::text, 'Internal Resource'::text, 'Contingency'::text, 'Other'::text])))`
 
 **References:**
-- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (currency) REFERENCES fx_rates(currency)`
+- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 
 ## calendar_exceptions
 
@@ -244,17 +291,17 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `deleted_at` | timestamp with time zone | yes |  |
 
 **Rules enforced by the database:**
-- `CHECK ((status = ANY (ARRAY['OPEN'::text, 'ANALYSIS'::text, 'ACTION_PLANNED'::text, 'IMPLEMENTATION'::text, 'VERIFICATION'::text, 'CLOSED'::text])))`
 - `CHECK ((effectiveness = ANY (ARRAY['EFFECTIVE'::text, 'PARTIALLY_EFFECTIVE'::text, 'NOT_EFFECTIVE'::text])))`
+- `CHECK ((status = ANY (ARRAY['OPEN'::text, 'ANALYSIS'::text, 'ACTION_PLANNED'::text, 'IMPLEMENTATION'::text, 'VERIFICATION'::text, 'CLOSED'::text])))`
 - `CHECK ((source_type = ANY (ARRAY['ROADBLOCK'::text, 'RISK'::text, 'AUDIT'::text, 'INCIDENT'::text, 'REVIEW'::text, 'MANUAL'::text])))`
 
 **References:**
-- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (risk_id) REFERENCES risks(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (roadblock_id) REFERENCES roadblocks(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (verifier_user_id) REFERENCES users(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (roadblock_id) REFERENCES roadblocks(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 
 ## change_requests
 
@@ -284,8 +331,8 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 - `CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text])))`
 
 **References:**
-- `FOREIGN KEY (created_by) REFERENCES users(id)`
 - `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (created_by) REFERENCES users(id)`
 - `FOREIGN KEY (approver_id) REFERENCES users(id)`
 
 ## cost_plans
@@ -301,15 +348,15 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `created_by` | bigint | yes |  |
 
 **Rules enforced by the database:**
-- `CHECK ((planned >= (0)::numeric))`
 - `CHECK ((period ~ '^\d{4}-\d{2}$'::text))`
+- `CHECK ((planned >= (0)::numeric))`
 
 **Uniqueness:**
 - `UNIQUE (project_id, period)`
 
 **References:**
-- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id)`
+- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 
 ## custom_field_defs
 
@@ -327,8 +374,8 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `deleted_at` | timestamp with time zone | yes |  |
 
 **Rules enforced by the database:**
-- `CHECK ((type = ANY (ARRAY['text'::text, 'number'::text, 'date'::text, 'select'::text])))`
 - `CHECK ((entity = 'project'::text))`
+- `CHECK ((type = ANY (ARRAY['text'::text, 'number'::text, 'date'::text, 'select'::text])))`
 
 **Uniqueness:**
 - `UNIQUE (entity, key)`
@@ -353,9 +400,9 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `change_request_id` | bigint | yes |  |
 
 **References:**
-- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (change_request_id) REFERENCES change_requests(id)`
 
 ## deliverables
@@ -377,8 +424,8 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 - `CHECK ((status = ANY (ARRAY['PENDING'::text, 'IN_PROGRESS'::text, 'DELIVERED'::text])))`
 
 **References:**
-- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 
 ## demands
 
@@ -411,25 +458,28 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `updated_at` | timestamp with time zone | no | `now()` |
 | `created_by` | bigint | yes |  |
 | `deleted_at` | timestamp with time zone | yes |  |
+| `source` | text | yes |  |
+| `source_ref` | text | yes |  |
 
 **Rules enforced by the database:**
+- `CHECK (((business_value >= 1) AND (business_value <= 10)))`
+- `CHECK ((status = ANY (ARRAY['DRAFT'::text, 'SUBMITTED'::text, 'APPROVED'::text, 'REJECTED'::text, 'CONVERTED'::text])))`
+- `CHECK (((time_criticality >= 1) AND (time_criticality <= 10)))`
+- `CHECK (((risk_reduction >= 1) AND (risk_reduction <= 10)))`
 - `CHECK ((reach >= 0))`
 - `CHECK ((impact >= (0)::numeric))`
 - `CHECK (((confidence >= 0) AND (confidence <= 100)))`
-- `CHECK (((risk_reduction >= 1) AND (risk_reduction <= 10)))`
-- `CHECK (((NOT mandatory) OR (length(TRIM(BOTH FROM COALESCE(mandatory_reason, ''::text))) >= 10)))`
-- `CHECK (((time_criticality >= 1) AND (time_criticality <= 10)))`
-- `CHECK (((business_value >= 1) AND (business_value <= 10)))`
-- `CHECK ((status = ANY (ARRAY['DRAFT'::text, 'SUBMITTED'::text, 'APPROVED'::text, 'REJECTED'::text, 'CONVERTED'::text])))`
 - `CHECK ((cost_of_delay_week >= (0)::numeric))`
+- `CHECK (((NOT mandatory) OR (length(TRIM(BOTH FROM COALESCE(mandatory_reason, ''::text))) >= 10)))`
+- `CHECK ((source = ANY (ARRAY['PULSE'::text, 'DEPT_MEETING'::text, 'INSPECTION'::text, 'HELPDESK'::text])))`
 
 **References:**
-- `FOREIGN KEY (decided_by) REFERENCES users(id)`
-- `FOREIGN KEY (site_id) REFERENCES sites(id)`
-- `FOREIGN KEY (converted_project_id) REFERENCES projects(id)`
 - `FOREIGN KEY (created_by) REFERENCES users(id)`
-- `FOREIGN KEY (division_id) REFERENCES divisions(id)`
 - `FOREIGN KEY (requester_id) REFERENCES users(id)`
+- `FOREIGN KEY (converted_project_id) REFERENCES projects(id)`
+- `FOREIGN KEY (division_id) REFERENCES divisions(id)`
+- `FOREIGN KEY (site_id) REFERENCES sites(id)`
+- `FOREIGN KEY (decided_by) REFERENCES users(id)`
 
 ## divisions
 
@@ -448,6 +498,31 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 
 **References:**
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
+
+## effort_standard
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | bigint | no |  |
+| `request_type` | text | no |  |
+| `category` | text | no |  |
+| `minutes` | integer | no |  |
+| `valid_from` | date | no |  |
+| `valid_to` | date | yes |  |
+| `rationale` | text | no |  |
+| `set_by` | bigint | yes |  |
+| `created_at` | timestamp with time zone | no | `now()` |
+
+**Rules enforced by the database:**
+- `CHECK ((char_length(btrim(rationale)) >= 20))`
+- `CHECK (((valid_to IS NULL) OR (valid_to > valid_from)))`
+- `CHECK (((minutes >= 5) AND (minutes <= 480)))`
+
+**Uniqueness:**
+- `UNIQUE (request_type, category, valid_from)`
+
+**References:**
+- `FOREIGN KEY (set_by) REFERENCES users(id) ON DELETE RESTRICT`
 
 ## external_links
 
@@ -529,9 +604,9 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 - `UNIQUE (meeting_id, user_id)`
 
 **References:**
+- `FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE RESTRICT`
 
 ## meeting_items
 
@@ -621,11 +696,11 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 - `CHECK ((status = ANY (ARRAY['NOT_STARTED'::text, 'IN_PROGRESS'::text, 'DONE'::text, 'SLIPPED'::text])))`
 
 **References:**
-- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (co_owner_user_id) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (co_owner_user_id) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (owner_division_id) REFERENCES divisions(id) ON DELETE RESTRICT`
 
 ## notification_deliveries
@@ -665,7 +740,7 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `deleted_at` | timestamp with time zone | yes |  |
 
 **Rules enforced by the database:**
-- `CHECK ((type = ANY (ARRAY['ROADBLOCK_ESCALATED'::text, 'ACTION_ASSIGNED'::text, 'MILESTONE_ASSIGNED'::text, 'PROJECT_RED'::text, 'MEETING_SCHEDULED'::text, 'PM_ASSIGNED'::text, 'SYNC_HALTED'::text, 'REMINDER'::text, 'CHANGE_REQUEST'::text, 'REPORT'::text])))`
+- `CHECK ((type = ANY (ARRAY['ROADBLOCK_ESCALATED'::text, 'ACTION_ASSIGNED'::text, 'MILESTONE_ASSIGNED'::text, 'PROJECT_RED'::text, 'MEETING_SCHEDULED'::text, 'PM_ASSIGNED'::text, 'SYNC_HALTED'::text, 'REMINDER'::text, 'CHANGE_REQUEST'::text, 'REPORT'::text, 'CAPACITY_OVERLOAD'::text])))`
 
 **References:**
 - `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT`
@@ -691,9 +766,41 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 - `CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'ACHIEVED'::text, 'DROPPED'::text])))`
 
 **References:**
-- `FOREIGN KEY (created_by) REFERENCES users(id)`
 - `FOREIGN KEY (pillar_id) REFERENCES strategic_pillars(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (owner_user_id) REFERENCES users(id)`
+- `FOREIGN KEY (created_by) REFERENCES users(id)`
+
+## person_capacity
+
+| Column | Type | Null | Default |
+|---|---|---|---|
+| `id` | bigint | no |  |
+| `user_id` | bigint | no |  |
+| `period` | character | no |  |
+| `fte` | numeric | no | `1.00` |
+| `standard_hours` | numeric | no | `173` |
+| `leave_hours` | numeric | no | `0` |
+| `training_hours` | numeric | no | `0` |
+| `available_hours` | numeric | yes |  |
+| `note` | text | yes |  |
+| `created_at` | timestamp with time zone | no | `now()` |
+| `updated_at` | timestamp with time zone | no | `now()` |
+| `created_by` | bigint | yes |  |
+| `deleted_at` | timestamp with time zone | yes |  |
+
+**Rules enforced by the database:**
+- `CHECK ((training_hours >= (0)::numeric))`
+- `CHECK ((period ~ '^[0-9]{4}-[0-9]{2}$'::text))`
+- `CHECK (((fte > (0)::numeric) AND (fte <= 1.5)))`
+- `CHECK ((standard_hours > (0)::numeric))`
+- `CHECK ((leave_hours >= (0)::numeric))`
+
+**Uniqueness:**
+- `UNIQUE (user_id, period)`
+
+**References:**
+- `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
 
 ## portfolios
 
@@ -713,9 +820,9 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `deleted_at` | timestamp with time zone | yes |  |
 
 **References:**
-- `FOREIGN KEY (created_by) REFERENCES users(id)`
-- `FOREIGN KEY (pillar_id) REFERENCES strategic_pillars(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (owner_user_id) REFERENCES users(id)`
+- `FOREIGN KEY (pillar_id) REFERENCES strategic_pillars(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (created_by) REFERENCES users(id)`
 
 ## programs
 
@@ -734,8 +841,8 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `deleted_at` | timestamp with time zone | yes |  |
 
 **References:**
-- `FOREIGN KEY (created_by) REFERENCES users(id)`
 - `FOREIGN KEY (owner_user_id) REFERENCES users(id)`
+- `FOREIGN KEY (created_by) REFERENCES users(id)`
 - `FOREIGN KEY (portfolio_id) REFERENCES portfolios(id) ON DELETE RESTRICT`
 
 ## project_baselines
@@ -758,9 +865,9 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 - `UNIQUE (project_id, version)`
 
 **References:**
-- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id)`
 - `FOREIGN KEY (change_request_id) REFERENCES change_requests(id)`
+- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 
 ## project_dependencies
 
@@ -782,8 +889,8 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 
 **References:**
 - `FOREIGN KEY (predecessor_project_id) REFERENCES projects(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (created_by) REFERENCES users(id)`
 - `FOREIGN KEY (successor_project_id) REFERENCES projects(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (created_by) REFERENCES users(id)`
 
 ## project_divisions
 
@@ -805,9 +912,9 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 - `UNIQUE (project_id, division_id)`
 
 **References:**
-- `FOREIGN KEY (division_id) REFERENCES divisions(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (division_id) REFERENCES divisions(id) ON DELETE RESTRICT`
 
 ## project_objectives
 
@@ -819,8 +926,8 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `created_by` | bigint | yes |  |
 
 **References:**
-- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (objective_id) REFERENCES objectives(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id)`
 
 ## project_sites
@@ -839,8 +946,8 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 - `UNIQUE (project_id, site_id)`
 
 **References:**
-- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE RESTRICT`
 
 ## project_templates
@@ -910,30 +1017,30 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `calendar_id` | bigint | yes |  |
 
 **Rules enforced by the database:**
-- `CHECK (((progress_method <> 'PHYSICAL'::text) OR (progress_manual IS NULL) OR ((progress_manual_note IS NOT NULL) AND (length(btrim(progress_manual_note)) >= 10))))`
-- `CHECK (((progress_manual >= 0) AND (progress_manual <= 100)))`
-- `CHECK ((progress_method = ANY (ARRAY['MILESTONE'::text, 'TASK'::text, 'EFFORT'::text, 'COST'::text, 'PHYSICAL'::text])))`
-- `CHECK ((rag_override = ANY (ARRAY['G'::text, 'A'::text, 'R'::text])))`
-- `CHECK ((rag_computed = ANY (ARRAY['G'::text, 'A'::text, 'R'::text])))`
 - `CHECK (((rag_override IS NULL) OR (char_length(COALESCE(rag_override_reason, ''::text)) >= 30)))`
+- `CHECK ((stage = ANY (ARRAY['IDEA'::text, 'INITIATION'::text, 'PLANNING'::text, 'EXECUTION'::text, 'DEPLOYMENT'::text, 'RUN'::text, 'CLOSED'::text])))`
+- `CHECK ((rag_computed = ANY (ARRAY['G'::text, 'A'::text, 'R'::text])))`
+- `CHECK ((rag_override = ANY (ARRAY['G'::text, 'A'::text, 'R'::text])))`
+- `CHECK ((roadmap_pillar = ANY (ARRAY['Network'::text, 'BizPartnering'::text, 'Risk'::text, 'People'::text, 'Other'::text])))`
+- `CHECK ((progress_method = ANY (ARRAY['MILESTONE'::text, 'TASK'::text, 'EFFORT'::text, 'COST'::text, 'PHYSICAL'::text])))`
+- `CHECK (((progress_manual >= 0) AND (progress_manual <= 100)))`
+- `CHECK (((progress_method <> 'PHYSICAL'::text) OR (progress_manual IS NULL) OR ((progress_manual_note IS NOT NULL) AND (length(btrim(progress_manual_note)) >= 10))))`
+- `CHECK ((priority = ANY (ARRAY['P1'::text, 'P2'::text, 'P3'::text])))`
 - `CHECK ((governance = ANY (ARRAY['LITE'::text, 'STANDARD'::text])))`
 - `CHECK ((operating_status = ANY (ARRAY['NOT_STARTED'::text, 'IN_PROGRESS'::text, 'ON_HOLD'::text, 'COMPLETED'::text, 'CANCELLED'::text])))`
-- `CHECK ((stage = ANY (ARRAY['IDEA'::text, 'INITIATION'::text, 'PLANNING'::text, 'EXECUTION'::text, 'DEPLOYMENT'::text, 'RUN'::text, 'CLOSED'::text])))`
-- `CHECK ((roadmap_pillar = ANY (ARRAY['Network'::text, 'BizPartnering'::text, 'Risk'::text, 'People'::text, 'Other'::text])))`
-- `CHECK ((priority = ANY (ARRAY['P1'::text, 'P2'::text, 'P3'::text])))`
 
 **Uniqueness:**
 - `UNIQUE (code)`
 
 **References:**
 - `FOREIGN KEY (template_id) REFERENCES project_templates(id)`
-- `FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (portfolio_id) REFERENCES portfolios(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (demand_id) REFERENCES demands(id)`
-- `FOREIGN KEY (calendar_id) REFERENCES calendars(id)`
-- `FOREIGN KEY (project_manager_id) REFERENCES users(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (lead_division_id) REFERENCES divisions(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (lead_division_id) REFERENCES divisions(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (project_manager_id) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (demand_id) REFERENCES demands(id)`
+- `FOREIGN KEY (portfolio_id) REFERENCES portfolios(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (calendar_id) REFERENCES calendars(id)`
 
 ## raci_assignments
 
@@ -955,9 +1062,9 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 - `UNIQUE (deliverable_id, user_id, raci_role)`
 
 **References:**
+- `FOREIGN KEY (deliverable_id) REFERENCES deliverables(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (deliverable_id) REFERENCES deliverables(id) ON DELETE RESTRICT`
 
 ## rag_history
 
@@ -995,9 +1102,9 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `deleted_at` | timestamp with time zone | yes |  |
 
 **References:**
-- `FOREIGN KEY (checked_by) REFERENCES users(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (milestone_id) REFERENCES milestones(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (milestone_id) REFERENCES milestones(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (checked_by) REFERENCES users(id) ON DELETE RESTRICT`
 
 ## reminder_log
 
@@ -1056,16 +1163,16 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `commitment` | text | no | `'COMMITTED'::text` |
 
 **Rules enforced by the database:**
-- `CHECK ((end_date >= start_date))`
-- `CHECK (((allocation_type <> 'PROJECT'::text) OR (project_id IS NOT NULL)))`
-- `CHECK (((percent >= 1) AND (percent <= 100)))`
-- `CHECK ((commitment = ANY (ARRAY['COMMITTED'::text, 'TENTATIVE'::text])))`
 - `CHECK ((allocation_type = ANY (ARRAY['PROJECT'::text, 'BAU'::text, 'LEAVE'::text])))`
+- `CHECK (((percent >= 1) AND (percent <= 100)))`
+- `CHECK ((end_date >= start_date))`
+- `CHECK ((commitment = ANY (ARRAY['COMMITTED'::text, 'TENTATIVE'::text])))`
+- `CHECK (((allocation_type <> 'PROJECT'::text) OR (project_id IS NOT NULL)))`
 
 **References:**
+- `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (workstream_id) REFERENCES workstreams(id) ON DELETE RESTRICT`
 
 ## resource_requests
@@ -1095,18 +1202,18 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 
 **Rules enforced by the database:**
 - `CHECK ((end_date >= start_date))`
+- `CHECK (((percent >= 1) AND (percent <= 100)))`
 - `CHECK (((min_proficiency >= 1) AND (min_proficiency <= 5)))`
 - `CHECK ((status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text, 'FILLED'::text])))`
-- `CHECK (((percent >= 1) AND (percent <= 100)))`
 
 **References:**
-- `FOREIGN KEY (allocation_id) REFERENCES resource_allocations(id)`
 - `FOREIGN KEY (decided_by) REFERENCES users(id)`
-- `FOREIGN KEY (fulfilled_user_id) REFERENCES users(id)`
-- `FOREIGN KEY (project_id) REFERENCES projects(id)`
-- `FOREIGN KEY (skill_id) REFERENCES skills(id)`
-- `FOREIGN KEY (site_id) REFERENCES sites(id)`
 - `FOREIGN KEY (created_by) REFERENCES users(id)`
+- `FOREIGN KEY (allocation_id) REFERENCES resource_allocations(id)`
+- `FOREIGN KEY (fulfilled_user_id) REFERENCES users(id)`
+- `FOREIGN KEY (site_id) REFERENCES sites(id)`
+- `FOREIGN KEY (skill_id) REFERENCES skills(id)`
+- `FOREIGN KEY (project_id) REFERENCES projects(id)`
 
 ## risks
 
@@ -1132,17 +1239,17 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `deleted_at` | timestamp with time zone | yes |  |
 
 **Rules enforced by the database:**
+- `CHECK (((residual_impact >= 1) AND (residual_impact <= 5)))`
+- `CHECK ((status = ANY (ARRAY['OPEN'::text, 'MITIGATING'::text, 'CLOSED'::text, 'REALISED'::text])))`
 - `CHECK (((residual_probability >= 1) AND (residual_probability <= 5)))`
 - `CHECK ((category = ANY (ARRAY['TECHNICAL'::text, 'SECURITY'::text, 'SCHEDULE'::text, 'FINANCIAL'::text, 'RESOURCE'::text, 'VENDOR'::text, 'OPERATIONAL'::text, 'OTHER'::text])))`
 - `CHECK (((probability >= 1) AND (probability <= 5)))`
 - `CHECK (((impact >= 1) AND (impact <= 5)))`
 - `CHECK ((treatment = ANY (ARRAY['AVOID'::text, 'MITIGATE'::text, 'TRANSFER'::text, 'ACCEPT'::text])))`
-- `CHECK (((residual_impact >= 1) AND (residual_impact <= 5)))`
-- `CHECK ((status = ANY (ARRAY['OPEN'::text, 'MITIGATING'::text, 'CLOSED'::text, 'REALISED'::text])))`
 
 **References:**
-- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
 
 ## roadblocks
@@ -1167,13 +1274,13 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `reopen_reason` | text | yes |  |
 
 **Rules enforced by the database:**
-- `CHECK ((status = ANY (ARRAY['OPEN'::text, 'IN_PROGRESS'::text, 'RESOLVED'::text, 'ESCALATED'::text])))`
 - `CHECK ((severity = ANY (ARRAY['CRITICAL'::text, 'MAJOR'::text, 'MINOR'::text])))`
+- `CHECK ((status = ANY (ARRAY['OPEN'::text, 'IN_PROGRESS'::text, 'RESOLVED'::text, 'ESCALATED'::text])))`
 
 **References:**
-- `FOREIGN KEY (raised_by_division_id) REFERENCES divisions(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (escalated_to) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (raised_by_division_id) REFERENCES divisions(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 
@@ -1198,8 +1305,8 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 - `CHECK ((status = ANY (ARRAY['DRAFT'::text, 'APPROVED'::text, 'REJECTED'::text, 'PROMOTED'::text])))`
 
 **References:**
-- `FOREIGN KEY (created_by) REFERENCES users(id)`
 - `FOREIGN KEY (decided_by) REFERENCES users(id)`
+- `FOREIGN KEY (created_by) REFERENCES users(id)`
 
 ## sequences
 
@@ -1284,13 +1391,13 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `deleted_at` | timestamp with time zone | yes |  |
 
 **Rules enforced by the database:**
-- `CHECK ((mood = ANY (ARRAY['ON_TRACK'::text, 'WATCH'::text, 'AT_RISK'::text])))`
 - `CHECK ((char_length(summary) <= 400))`
+- `CHECK ((mood = ANY (ARRAY['ON_TRACK'::text, 'WATCH'::text, 'AT_RISK'::text])))`
 
 **References:**
+- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
 
 ## strategic_pillars
 
@@ -1364,8 +1471,8 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 
 **References:**
 - `FOREIGN KEY (predecessor_task_id) REFERENCES tasks(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (successor_task_id) REFERENCES tasks(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (successor_task_id) REFERENCES tasks(id) ON DELETE RESTRICT`
 
 ## tasks
 
@@ -1396,22 +1503,22 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `constraint_date` | date | yes |  |
 
 **Rules enforced by the database:**
-- `CHECK (((planned_finish IS NULL) OR (planned_start IS NULL) OR (planned_finish >= planned_start)))`
-- `CHECK (((constraint_type = 'ASAP'::text) OR (constraint_date IS NOT NULL)))`
+- `CHECK ((status = ANY (ARRAY['NOT_STARTED'::text, 'IN_PROGRESS'::text, 'BLOCKED'::text, 'DONE'::text, 'CANCELLED'::text])))`
 - `CHECK ((constraint_type = ANY (ARRAY['ASAP'::text, 'START_NO_EARLIER_THAN'::text, 'FINISH_NO_LATER_THAN'::text, 'MUST_START_ON'::text, 'MUST_FINISH_ON'::text])))`
+- `CHECK (((constraint_type = 'ASAP'::text) OR (constraint_date IS NOT NULL)))`
+- `CHECK (((remaining_hours IS NULL) OR (remaining_hours >= (0)::numeric)))`
 - `CHECK (((estimated_hours IS NULL) OR (estimated_hours >= (0)::numeric)))`
 - `CHECK (((actual_hours IS NULL) OR (actual_hours >= (0)::numeric)))`
 - `CHECK ((priority = ANY (ARRAY['P1'::text, 'P2'::text, 'P3'::text])))`
-- `CHECK (((remaining_hours IS NULL) OR (remaining_hours >= (0)::numeric)))`
-- `CHECK ((status = ANY (ARRAY['NOT_STARTED'::text, 'IN_PROGRESS'::text, 'BLOCKED'::text, 'DONE'::text, 'CANCELLED'::text])))`
+- `CHECK (((planned_finish IS NULL) OR (planned_start IS NULL) OR (planned_finish >= planned_start)))`
 
 **References:**
-- `FOREIGN KEY (milestone_id) REFERENCES milestones(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (parent_task_id) REFERENCES tasks(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (workstream_id) REFERENCES workstreams(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (parent_task_id) REFERENCES tasks(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (milestone_id) REFERENCES milestones(id) ON DELETE RESTRICT`
 
 ## time_entries
 
@@ -1434,11 +1541,11 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 - `CHECK (((hours > (0)::numeric) AND (hours <= (24)::numeric)))`
 
 **References:**
-- `FOREIGN KEY (workstream_id) REFERENCES workstreams(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (workstream_id) REFERENCES workstreams(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
 
 ## user_skills
 
@@ -1456,13 +1563,13 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `created_by` | bigint | yes |  |
 
 **Rules enforced by the database:**
-- `CHECK ((years_experience >= (0)::numeric))`
 - `CHECK (((proficiency >= 1) AND (proficiency <= 5)))`
+- `CHECK ((years_experience >= (0)::numeric))`
 
 **References:**
-- `FOREIGN KEY (skill_id) REFERENCES skills(id)`
-- `FOREIGN KEY (user_id) REFERENCES users(id)`
 - `FOREIGN KEY (created_by) REFERENCES users(id)`
+- `FOREIGN KEY (user_id) REFERENCES users(id)`
+- `FOREIGN KEY (skill_id) REFERENCES skills(id)`
 
 ## users
 
@@ -1486,14 +1593,19 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 | `is_steering_committee` | boolean | no | `false` |
 | `enterprise_access` | boolean | no | `true` |
 | `finance_access` | boolean | no | `false` |
+| `entra_oid` | uuid | yes |  |
+| `sdp_technician_alias` | text | yes |  |
 
 **Rules enforced by the database:**
 - `CHECK ((role = ANY (ARRAY['ADMIN'::text, 'DIVISION_LEAD'::text, 'CONTRIBUTOR'::text, 'VIEWER'::text])))`
 
+**Uniqueness:**
+- `UNIQUE (entra_oid)`
+
 **References:**
-- `FOREIGN KEY (division_id) REFERENCES divisions(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
+- `FOREIGN KEY (division_id) REFERENCES divisions(id) ON DELETE RESTRICT`
 
 ## webhook_deliveries
 
@@ -1557,6 +1669,6 @@ Tables: 64. Every table carries `created_at`/`updated_at`; most carry
 - `CHECK ((status = ANY (ARRAY['NOT_STARTED'::text, 'IN_PROGRESS'::text, 'DONE'::text, 'CANCELLED'::text])))`
 
 **References:**
+- `FOREIGN KEY (lead_user_id) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT`
 - `FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT`
-- `FOREIGN KEY (lead_user_id) REFERENCES users(id) ON DELETE RESTRICT`

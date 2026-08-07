@@ -91,6 +91,16 @@ async function resolveUser(claims) {
   const user = rows[0];
   if (user) {
     if (user.deleted_at || !user.active) return { error: "Account is deactivated" };
+    // Capture the immutable directory object id on every login. Email can be
+    // changed by an administrator; the Entra object id cannot, so it is the
+    // identity anchor the SDP integration joins on.
+    const oid = claims.oid || claims.sub || null;
+    if (oid && /^[0-9a-f-]{36}$/i.test(String(oid))) {
+      await query(
+        `UPDATE users SET entra_oid = $2, updated_at = now()
+          WHERE id = $1 AND (entra_oid IS NULL OR entra_oid <> $2::uuid)`,
+        [user.id, oid]).catch(() => { /* a duplicate oid must not block login */ });
+    }
     return { userId: user.id };
   }
   const cfg = config();
@@ -99,9 +109,10 @@ async function resolveUser(claims) {
   const bcrypt = require("bcryptjs");
   const hash = await bcrypt.hash(crypto.randomBytes(24).toString("hex"), 12);
   const ins = await query(
-    `INSERT INTO users (name, email, password_hash, role, must_change_password)
-     VALUES ($1, $2, $3, 'VIEWER', false) RETURNING id`,
-    [claims.name || email, email, hash]);
+    `INSERT INTO users (name, email, password_hash, role, must_change_password, entra_oid)
+     VALUES ($1, $2, $3, 'VIEWER', false, $4) RETURNING id`,
+    [claims.name || email, email, hash,
+     /^[0-9a-f-]{36}$/i.test(String(claims.oid || "")) ? claims.oid : null]);
   return { userId: ins.rows[0].id, provisioned: true };
 }
 

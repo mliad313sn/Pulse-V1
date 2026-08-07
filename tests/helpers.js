@@ -19,17 +19,19 @@ const getHash = () => (passwordHashPromise ||= bcrypt.hash(TEST_PASSWORD, 12));
 
 async function initDb() {
   await migrate();
-  await query(`TRUNCATE external_links, benefit_measurements, calendar_exceptions, resource_requests, user_skills, skills, webhook_deliveries, webhook_subscriptions, scenarios, cost_plans, project_dependencies, task_baselines, custom_field_defs, project_templates, project_objectives, key_results, objectives, demands, report_dispatch_log, attachments, project_baselines, change_requests, programs, portfolios, strategic_pillars, benefits, budget_lines, time_entries, resource_allocations, reminder_log, task_dependencies, tasks, workstreams, meeting_minutes_versions, notification_deliveries, capas, risks, sync_ops, raci_assignments, deliverables, stage_transitions, audit_log, rag_history, notifications, readiness_items, status_updates,
+  await query(`TRUNCATE bau_load, bau_unattributed, person_capacity, emid.person_alias, emid.person, external_links, benefit_measurements, calendar_exceptions, resource_requests, user_skills, skills, webhook_deliveries, webhook_subscriptions, scenarios, cost_plans, project_dependencies, task_baselines, custom_field_defs, project_templates, project_objectives, key_results, objectives, demands, report_dispatch_log, attachments, project_baselines, change_requests, programs, portfolios, strategic_pillars, benefits, budget_lines, time_entries, resource_allocations, reminder_log, task_dependencies, tasks, workstreams, meeting_minutes_versions, notification_deliveries, capas, risks, sync_ops, raci_assignments, deliverables, stage_transitions, audit_log, rag_history, notifications, readiness_items, status_updates,
     decisions, actions, meeting_items, meeting_attendees, meetings, roadblocks, milestones,
     project_sites, project_divisions, projects, users, sequences, sites, divisions, session,
     schema_migrations RESTART IDENTITY CASCADE`);
   // re-record migration (truncate wiped the ledger; schema itself persists)
-  await query(`INSERT INTO schema_migrations (name) VALUES ('001_init.sql'), ('002_ecosystem.sql'), ('003_risk_capa_channels.sql'), ('004_minutes_versions.sql'), ('005_lifecycle.sql'), ('006_workstreams_tasks.sql'), ('007_reminders.sql'), ('008_resources_time.sql'), ('009_finance_benefits.sql'), ('010_portfolio_hierarchy.sql'), ('011_baselines_changes.sql'), ('012_attachments.sql'), ('013_report_dispatch.sql'), ('014_governance_tier.sql'), ('015_phase0_trust.sql'), ('016_demand.sql'), ('017_okrs.sql'), ('018_templates_custom_fields.sql'), ('019_planning.sql'), ('020_evm.sql'), ('021_scenarios.sql'), ('022_meeting_mode.sql'), ('023_platform.sql'), ('024_capacity.sql'), ('025_health.sql'), ('026_calendars_constraints.sql'), ('027_benefit_realization.sql'), ('028_integrations.sql'), ('029_external_links_partial_unique.sql') ON CONFLICT DO NOTHING`);
+  await query(`INSERT INTO schema_migrations (name) VALUES ('001_init.sql'), ('002_ecosystem.sql'), ('003_risk_capa_channels.sql'), ('004_minutes_versions.sql'), ('005_lifecycle.sql'), ('006_workstreams_tasks.sql'), ('007_reminders.sql'), ('008_resources_time.sql'), ('009_finance_benefits.sql'), ('010_portfolio_hierarchy.sql'), ('011_baselines_changes.sql'), ('012_attachments.sql'), ('013_report_dispatch.sql'), ('014_governance_tier.sql'), ('015_phase0_trust.sql'), ('016_demand.sql'), ('017_okrs.sql'), ('018_templates_custom_fields.sql'), ('019_planning.sql'), ('020_evm.sql'), ('021_scenarios.sql'), ('022_meeting_mode.sql'), ('023_platform.sql'), ('024_capacity.sql'), ('025_health.sql'), ('026_calendars_constraints.sql'), ('027_benefit_realization.sql'), ('028_integrations.sql'), ('029_external_links_partial_unique.sql'), ('030_emid_identity.sql'), ('031_emid_seed.sql'), ('032_capacity_bau.sql'), ('033_sdp_mart.sql'), ('034_mart_dedupe_fix.sql') ON CONFLICT DO NOTHING`);
   // fx_rates and calendars reference users, so the CASCADE truncate wipes them
   // — restore the reference data the migrations seed.
   await query(`INSERT INTO fx_rates (currency, rate_to_base) VALUES
     ('USD',1),('EUR',1.08),('GBP',1.27),('XOF',0.00165),('GHS',0.064),('CAD',0.73),('AUD',0.65)
     ON CONFLICT (currency) DO NOTHING`);
+  // effort_standard references users(id), so the CASCADE truncate wipes it too
+  await require("../src/db/seeds/effortStandards").seedEffortStandards({ query });
   await query(`INSERT INTO calendars (name, working_days, hours_per_day, is_default, description)
     SELECT 'Standard (Mon–Fri)', '{1,2,3,4,5}', 8, true, 'Default working week'
      WHERE NOT EXISTS (SELECT 1 FROM calendars WHERE deleted_at IS NULL AND is_default)`);
@@ -44,8 +46,9 @@ async function fixtures() {
     const r = await query(`INSERT INTO divisions (code, name) VALUES ($1,$2) RETURNING id`, [code, name]);
     D[code] = r.rows[0].id;
   }
-  for (const [code, name] of [["SGO", "Sabodala"], ["HGO", "Houndé"], ["ITY", "Ity"], ["SML", "Sissingué"],
-    ["MGO", "Mana"], ["KGO", "Kalana"], ["DKR", "Dakar"], ["ABJ", "Abidjan"], ["OUA", "Ouaga"], ["GROUP", "Group"]]) {
+  for (const [code, name] of [["SGO", "Sabodala"], ["HGO", "Houndé"], ["ITY", "Ity"], ["SML", "Lafigué"],
+    ["MGO", "Mana"], ["KGO", "Kalana"], ["DKR", "Dakar"], ["ABJ", "Abidjan"], ["OUA", "Ouaga"], ["GROUP", "Group"],
+    ["EXPLO", "Exploration"], ["TND", "Tanda"], ["ASSAFO", "Assafo"], ["MASSAWA", "Massawa"]]) {
     const r = await query(`INSERT INTO sites (code, name) VALUES ($1,$2) RETURNING id`, [code, name]);
     S[code] = r.rows[0].id;
   }

@@ -610,3 +610,26 @@ button.inline-link { background:none; border:none; font:inherit; padding:0; }
   border-radius: 6px; padding: 8px; margin-bottom: 6px; font-size: .82rem; cursor: pointer; }
 .board-card .muted { font-size: .74rem; }
 .board-empty { font-size: .8rem; }
+
+/* ===== PULSE ↔ SDP — capacity ledger ===== */
+.note-strip { background: var(--surface-card); border: 1px solid var(--line);
+  border-left: 3px solid var(--edv-orange); border-radius: var(--radius-sm);
+  padding: 9px 13px; margin-bottom: 14px; font-size: .84rem; color: var(--ink-soft); }
+.led-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.led-table th, .led-table td { padding: 6px 9px; border-bottom: 1px solid var(--line); text-align: left; }
+.led-table th { color: var(--ink-faint); font-size: .7rem; text-transform: uppercase;
+  letter-spacing: .05em; white-space: nowrap; }
+.led-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.led-name { white-space: nowrap; font-weight: 600; }
+.led-cell { text-align: right; white-space: nowrap; cursor: pointer;
+  font-variant-numeric: tabular-nums; }
+.led-cell.led-red { background: rgba(200,16,46,.14); color: var(--rag-red-text); font-weight: 700; }
+.led-cell.led-amber { background: rgba(242,169,0,.18); color: var(--rag-amber-text); font-weight: 600; }
+.led-cell.led-green { background: rgba(46,158,143,.10); color: var(--rag-green-text); }
+.led-cell.led-nodata { background: var(--surface); color: var(--ink-faint); }
+.led-util { font-size: .7rem; opacity: .75; margin-left: 4px; }
+.led-neg { color: var(--rag-red-text); font-weight: 700; }
+.prov { font-size: .72rem; margin-left: 3px; font-weight: 700; }
+.prov-model { color: var(--rag-amber-text); }
+.prov-meas { color: var(--rag-green-text); }
+.prov-mixed { color: var(--ink-faint); }

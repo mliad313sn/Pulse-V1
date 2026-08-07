@@ -99,6 +99,7 @@ function createApp(options = {}) {
   app.use("/api/v1", require("./modules/rag/routes").health);
   app.use("/api/v1", require("./modules/tasks/calendarRoutes"));
   app.use("/api/v1", require("./modules/integrations/routes"));
+  app.use("/api/v1", require("./modules/emid/routes"));
   app.use("/api/v1/sync", require("./modules/sync/routes").router);
 
   // Reference data for pickers (any authenticated user)
@@ -168,6 +169,7 @@ if (require.main === module) {
         require("./jobs/reminders").start();
         require("./jobs/reportDispatch").start();
         require("./modules/platform/outbox").startWorker(); // webhook delivery + retry
+        require("./jobs/bauImport").start();                 // SDP helpdesk load import
       }
     })
     .catch((err) => {

@@ -53,7 +53,7 @@ async function seed(force = false) {
       D[code] = r.rows[0].id;
     }
     const siteRows = [
-      ["SGO", "Sabodala-Massawa"], ["HGO", "Houndé"], ["ITY", "Ity"], ["SML", "Sissingué"],
+      ["SGO", "Sabodala-Massawa"], ["HGO", "Houndé"], ["ITY", "Ity"], ["SML", "Lafigué"],
       ["MGO", "Mana"], ["KGO", "Kalana"], ["DKR", "Dakar Office"], ["ABJ", "Abidjan Office"],
       ["OUA", "Ouagadougou Office"], ["GROUP", "Group-wide"],
     ];

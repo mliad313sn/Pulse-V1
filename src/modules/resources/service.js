@@ -97,19 +97,25 @@ async function workload(user, { overloadedOnly = false } = {}) {
             AND (now() AT TIME ZONE 'utc')::date BETWEEN ra.start_date AND ra.end_date
        LEFT JOIN projects p ON p.id = ra.project_id AND p.deleted_at IS NULL
             AND p.stage <> 'CLOSED' AND p.operating_status NOT IN ('CANCELLED')
-      WHERE u.deleted_at IS NULL AND u.active AND ${scope}
+      WHERE u.deleted_at IS NULL AND u.active AND u.role <> 'VIEWER' AND ${scope}
       GROUP BY u.id, u.name, s.code, d.code
-      HAVING coalesce(sum(ra.percent), 0) > 0
-      ORDER BY total_percent DESC`,
+      ORDER BY total_percent DESC, u.name`,
     params
   );
+  // Defect D2 (fixed): this used to end with `HAVING sum(ra.percent) > 0`,
+  // which silently dropped everyone with no project allocation — precisely the
+  // ticket-saturated site agents whose load this report exists to surface.
+  // Everyone active is now returned, with zero project work shown as zero.
   const list = rows.map((r) => ({
     ...r,
+    breakdown: r.breakdown || [],
     overloaded: r.total_percent > 100,
     explanation: r.total_percent > 100
-      ? `${r.total_percent}% allocated across ${r.breakdown.length} project(s): ` +
-        r.breakdown.map((b) => `${b.project} ${b.percent}%`).join(", ")
-      : null,
+      ? `${r.total_percent}% allocated across ${(r.breakdown || []).length} project(s): ` +
+        (r.breakdown || []).map((b) => `${b.project} ${b.percent}%`).join(", ")
+      : r.total_percent === 0
+        ? "No project allocation. Helpdesk and BAU load is not shown here — see the capacity ledger for the full picture."
+        : null,
   }));
   return overloadedOnly ? list.filter((r) => r.overloaded) : list;
 }

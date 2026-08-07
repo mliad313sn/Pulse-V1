@@ -8,6 +8,7 @@ import { renderSiteLens } from "./views/siteLens.js";
 import { renderMyActions } from "./views/myActions.js";
 import { renderReports } from "./views/reports.js";
 import { renderCapacity } from "./views/capacity.js";
+import { renderLedger } from "./views/ledger.js";
 import { renderAdmin } from "./views/admin.js";
 import { renderWarRoom } from "./views/warRoom.js";
 import { renderExecutive } from "./views/executive.js";
@@ -110,6 +111,7 @@ function shell(active, contentNode) {
     ["my", `☑ ${t("nav.my")}`, "#/my"],
     ["warroom", `⚑ ${t("nav.warroom")}`, "#/warroom"],
     ["capacity", "◷ Capacity", "#/capacity"],
+    ["ledger", "⧗ Headroom", "#/ledger"],
     ["exec", `◆ ${t("nav.exec")}`, "#/exec"],
     ["reports", `📊 ${t("nav.reports")}`, "#/reports"],
   ];
@@ -276,6 +278,7 @@ const routes = [
   [/^#\/my/, "my", renderMyActions],
   [/^#\/warroom/, "warroom", renderWarRoom],
   [/^#\/exec/, "exec", renderExecutive],
+  [/^#\/ledger/, "ledger", renderLedger],
   [/^#\/capacity/, "capacity", renderCapacity],
   [/^#\/reports/, "reports", renderReports],
   [/^#\/admin/, "admin", renderAdmin],
