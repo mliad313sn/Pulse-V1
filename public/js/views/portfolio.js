@@ -126,6 +126,8 @@ export async function renderPortfolio(container) {
       <button class="clear" id="f-clear">${t("wall.clear")}</button>
       <span style="flex:1"></span>
       <button class="btn primary" id="export-deck">${t("wall.exportDeck")}</button>
+      <a class="btn small" id="export-xlsx" download>${t("wall.exportXlsx")}</a>
+      <a class="btn small" id="export-pdf" download>${t("wall.exportPdf")}</a>
     </div>
     <div class="card-grid" id="cards"></div>`;
 
@@ -135,6 +137,9 @@ export async function renderPortfolio(container) {
     for (const [k, v] of Object.entries(FILTERS)) if (v) params.set(k, v);
     const res = await api.get(`/api/v1/projects?${params}`);
     current = res.projects;
+    // server-side exports carry the SAME filters; scope is resolved server-side
+    container.querySelector("#export-xlsx").href = `/api/v1/exports/portfolio.xlsx?${params}`;
+    container.querySelector("#export-pdf").href = `/api/v1/exports/portfolio.pdf?${params}`;
     container.querySelector("#kpis").innerHTML = kpiBanner(current);
     container.querySelector("#cards").innerHTML = current.length
       ? current.map(projectCard).join("")

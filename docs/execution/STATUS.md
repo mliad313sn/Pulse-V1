@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **100/100 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **104/104 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -68,8 +68,18 @@ render assertions — currently PASS with 0 serious/critical on login/wall/
 My Actions/Executive. Remaining: translate deep views (project room, meetings,
 admin, reports), clear moderate region/heading-order findings.
 
+## Completed: E23 server-side export engine (2026-08-07)
+`/api/v1/exports/portfolio.{xlsx,pdf,pptx}` — scope resolved exclusively from
+filters via listPortfolio (same confidentiality/site-isolation predicate as
+the wall; client cannot pass project IDs). exceljs workbook (finance columns
+only when authorized), pdfkit report (uncompressed streams so tests decode
+real text), pptxgenjs deck (adaptive title + paged table). Wall gained
+Excel/PDF buttons carrying live filters. Semantic leak tests parse each
+format and assert confidential titles/codes and finance figures are ABSENT
+for unauthorized users, and site-restricted users export only their site.
+Deps: exceljs+pdfkit+pptxgenjs added (uuid overridden to ^11 — audit stays 0).
+
 ## Next executable work items (dependency order)
-9. **E23**: server-side export service + PDF + seeded leak tests.
 10. **E15**: WebSocket presenter sync.
 11. **E06**: baselines + change requests.
 12. **E30**: release qualification per §108 journeys.
