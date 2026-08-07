@@ -74,6 +74,24 @@ router.put("/benefits/:id", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ===== SPM P4: cost plan + EVM =====
+router.put("/projects/:projectId/cost-plan", withProjectAccess(), async (req, res, next) => {
+  try {
+    const { periods } = z.object({
+      periods: z.array(z.object({
+        period: z.string().regex(/^\d{4}-\d{2}$/),
+        planned: z.number().min(0),
+      })).max(120),
+    }).parse(req.body);
+    res.json({ periods: await service.setCostPlan(req.user, req.projectAccess, periods) });
+  } catch (err) { next(err); }
+});
+
+router.get("/projects/:projectId/evm", withProjectAccess(), async (req, res, next) => {
+  try { res.json(await service.evm(req.user, req.projectAccess, req.query.asOf)); }
+  catch (err) { next(err); }
+});
+
 // ===== FX rates (Phase 0 multicurrency) =====
 router.get("/fx-rates", async (req, res, next) => {
   try { res.json({ rates: await service.listFxRates() }); }

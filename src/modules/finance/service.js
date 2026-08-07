@@ -130,6 +130,53 @@ async function setFxRate(actor, currency, rate) {
   });
 }
 
+// ===== SPM P4: time-phased cost plan + EVM =====
+const { computeEvm } = require("./evm");
+
+async function setCostPlan(actor, projectAccess, periods) {
+  if (!canFinance(actor)) throw forbidden("Financial access required");
+  for (const p of periods) {
+    if (!/^\d{4}-\d{2}$/.test(p.period) || !(Number(p.planned) >= 0)) {
+      throw badRequest("Each entry needs period YYYY-MM and planned >= 0");
+    }
+  }
+  return withTransaction(async (client) => {
+    await client.query(`DELETE FROM cost_plans WHERE project_id = $1`, [projectAccess.project.id]);
+    for (const p of periods) {
+      await client.query(
+        `INSERT INTO cost_plans (project_id, period, planned, created_by) VALUES ($1,$2,$3,$4)`,
+        [projectAccess.project.id, p.period, p.planned, actor.id]);
+    }
+    await audit.record(client, {
+      entity: "project", entityId: projectAccess.project.id, userId: actor.id,
+      changes: [{ field: "cost_plan", old: null, new: `${periods.length} periods` }],
+    });
+    return periods;
+  });
+}
+
+async function evm(actor, projectAccess, asOfPeriod) {
+  if (!canFinance(actor)) throw forbidden("Financial access required");
+  const pid = projectAccess.project.id;
+  const [{ rows: plan }, { rows: ac }] = await Promise.all([
+    query(`SELECT period, planned FROM cost_plans WHERE project_id = $1 ORDER BY period`, [pid]),
+    query(`SELECT coalesce(sum(b.actual * fx.rate_to_base),0) AS actual
+             FROM budget_lines b JOIN fx_rates fx ON fx.currency = b.currency
+            WHERE b.project_id = $1 AND b.deleted_at IS NULL`, [pid]),
+  ]);
+  const period = asOfPeriod || new Date().toISOString().slice(0, 7);
+  return {
+    costPlan: plan,
+    ...computeEvm({
+      costPlan: plan,
+      progressPct: projectAccess.project.progress_pct || 0,
+      actualCost: Number(ac[0].actual),
+      asOfPeriod: period,
+    }),
+    progress_source: "computed milestone progress (progress_pct)",
+  };
+}
+
 // ===== E18 benefits (operational visibility, normal project access) =====
 const BENEFIT_FIELDS = ["title", "owner_user_id", "baseline", "target", "unit", "measure_method", "target_date", "actual", "status"];
 
@@ -192,4 +239,4 @@ async function listBenefits(projectAccess) {
   return rows;
 }
 
-module.exports = { addLine, updateLine, financials, addBenefit, updateBenefit, listBenefits, canFinance, listFxRates, setFxRate };
+module.exports = { addLine, updateLine, financials, addBenefit, updateBenefit, listBenefits, canFinance, listFxRates, setFxRate, setCostPlan, evm };

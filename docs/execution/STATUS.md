@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **149/149 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **151/151 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -100,9 +100,11 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
 - **P3 Capacity intelligence**: weekly/monthly capacity; BAU/leave/tentative;
   role-based demand; skills/certs/rates; skill-gap; requests/approvals;
   matching; scenario capacity; forecasting.
-- **P4 Finance & benefits**: cost plans by fiscal period; ETC/EAC; vendor/PO/
-  contract linkage; EVM (PV/EV/AC/CPI/SPI/BAC/EAC/VAC); benefit realization
-  periods + post-closure observations. (FX/multicurrency DONE in P0.)
+- **P4 Finance & benefits — MOSTLY DONE**: time-phased cost plans (YYYY-MM,
+  finance-gated, migration 020) + full EVM (PV/EV/AC/CPI/SPI/BAC/ETC/EAC/VAC,
+  explainable, honest n/a without actuals, AC FX-converted, EV from computed
+  milestone progress). FX/multicurrency from P0. REMAINING: vendor/PO/contract
+  linkage; benefit realization periods + post-closure observations.
 - **P5 Health 2.0**: weighted multi-dimensional signals (schedule/finance/
   resources/risks/governance/benefits/confidence) with record-level links;
   progress methodologies (effort/cost/EVM).
