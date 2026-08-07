@@ -564,3 +564,16 @@ button.inline-link { background:none; border:none; font:inherit; padding:0; }
 .badge-count { background:var(--rag-red); color:#fff; border-radius:9px; font-size:.62rem; padding:1px 6px; font-weight:700; }
 .stage-select { display:flex; gap:4px; flex-wrap:wrap; }
 .clickable { cursor:pointer; }
+
+/* ===== SPM P3 — capacity heatmap ===== */
+.cap-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.cap-table th, .cap-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+.cap-table th { color: var(--ink-faint); font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; }
+.cap-name { white-space: nowrap; font-weight: 600; }
+.cap-cell { text-align: center; white-space: nowrap; cursor: help; }
+.cap-cell.cap-over { background: rgba(200,16,46,.14); color: var(--rag-red-text); font-weight: 700; }
+.cap-cell.cap-risk { background: rgba(240,160,32,.16); color: var(--rag-amber-text); font-weight: 600; }
+.cap-cell.cap-ok { background: rgba(46,158,143,.10); color: var(--rag-green-text); }
+.cap-cell.cap-free { background: var(--surface); color: var(--ink-faint); }
+.cap-tent { margin-left: 4px; font-size: .74rem; color: var(--rag-amber-text); font-weight: 700; }
+.cap-leave { margin-left: 4px; font-size: .74rem; opacity: .75; }

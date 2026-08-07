@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **164/164 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **176/176 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -97,9 +97,19 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
   plans computed FS-only; now honors both. REMAINING: working calendars +
   exceptions, date constraints (MUST_START_ON etc.), resource leveling,
   Gantt visual (P11).
-- **P3 Capacity intelligence**: weekly/monthly capacity; BAU/leave/tentative;
-  role-based demand; skills/certs/rates; skill-gap; requests/approvals;
-  matching; scenario capacity; forecasting.
+- **P3 Capacity intelligence — DONE (core)**: migration 024 adds a skills
+  catalogue with per-person proficiency/certification (self-service for your
+  own, Admin/DL for others), allocation TYPE (PROJECT/BAU/LEAVE — project_id
+  now nullable with a CHECK so non-project time is bookable) and COMMITMENT
+  (COMMITTED/TENTATIVE). Pure capacity kernel (capacity.js): day-weighted
+  weekly/monthly buckets, leave REDUCES capacity while BAU consumes it,
+  tentative load reported separately as at-risk, every period explains itself.
+  Role-based resource requests raised before anyone is named → DL/Admin
+  approval → automated candidate matching (skill fit + free capacity + site,
+  each candidate carrying its reason) → fulfilment into a real allocation.
+  Skill-gap report. Capacity heatmap UI at #/capacity with match-and-assign.
+  REMAINING: rates/cost-of-resource, workforce demand forecasting beyond
+  booked work, scenario-linked capacity planning.
 - **P4 Finance & benefits — MOSTLY DONE**: time-phased cost plans (YYYY-MM,
   finance-gated, migration 020) + full EVM (PV/EV/AC/CPI/SPI/BAC/ETC/EAC/VAC,
   explainable, honest n/a without actuals, AC FX-converted, EV from computed

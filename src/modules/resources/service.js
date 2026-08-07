@@ -9,10 +9,34 @@ async function allocate(actor, projectAccess, input) {
   if (projectAccess.access !== "FULL") throw forbidden("Full edit rights required to allocate resources");
   return withTransaction(async (client) => {
     const { rows } = await client.query(
-      `INSERT INTO resource_allocations (project_id, workstream_id, user_id, start_date, end_date, percent, role, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      `INSERT INTO resource_allocations (project_id, workstream_id, user_id, start_date, end_date,
+         percent, role, commitment, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
       [projectAccess.project.id, input.workstream_id || null, input.user_id,
-       input.start_date, input.end_date, input.percent, input.role || null, actor.id]
+       input.start_date, input.end_date, input.percent, input.role || null,
+       input.commitment || "COMMITTED", actor.id]
+    );
+    await audit.recordCreate(client, "resource_allocation", rows[0].id, actor.id);
+    return rows[0];
+  });
+}
+
+// SPM P3 — BAU and leave carry no project. A person books their own; Admins
+// and Division Leads book for others. Capacity that isn't recorded is
+// capacity that gets double-sold, so this is deliberately low-friction.
+async function allocateNonProject(actor, input) {
+  if (actor.role === "VIEWER") throw forbidden("Viewers cannot book time");
+  if (input.user_id !== actor.id && actor.role !== "ADMIN" && actor.role !== "DIVISION_LEAD") {
+    throw forbidden("Only Admins and Division Leads book non-project time for someone else");
+  }
+  if (input.end_date < input.start_date) throw badRequest("end_date cannot precede start_date");
+  return withTransaction(async (client) => {
+    const { rows } = await client.query(
+      `INSERT INTO resource_allocations (project_id, user_id, start_date, end_date, percent, role,
+         allocation_type, commitment, created_by)
+       VALUES (NULL,$1,$2,$3,$4,$5,$6,'COMMITTED',$7) RETURNING *`,
+      [input.user_id, input.start_date, input.end_date, input.percent,
+       input.role || null, input.allocation_type, actor.id]
     );
     await audit.recordCreate(client, "resource_allocation", rows[0].id, actor.id);
     return rows[0];
@@ -129,4 +153,4 @@ async function timeSummary(projectAccess) {
   return { byUser: byUser.rows, ...totals.rows[0] };
 }
 
-module.exports = { allocate, updateAllocation, workload, logTime, timeSummary };
+module.exports = { allocate, allocateNonProject, updateAllocation, workload, logTime, timeSummary };

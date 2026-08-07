@@ -79,6 +79,40 @@ test("P0 idempotency scoping: same op id from ANOTHER user is a fresh operation;
   assert.equal(rows[0].n, 2, "exactly two updates exist: one per user");
 });
 
+test("P0 idempotency race: a concurrent replay burst applies the op exactly once", async () => {
+  // The reconnect case: the client fires the queued op again before the first
+  // copy has finished. The op id is reserved atomically, so only one applies.
+  const opId = "burst-op-id-777";
+  const send = () => infLead.post(`/api/v1/projects/${project.id}/updates`)
+    .set("X-Client-Op-Id", opId)
+    .send({ mood: "WATCH", summary: "Replayed during reconnect" });
+
+  const results = await Promise.all([send(), send(), send(), send()]);
+  const applied = results.filter((r) => r.status === 201);
+  const duplicates = results.filter((r) => r.status === 200 && r.body.duplicate === true);
+  assert.equal(applied.length, 1, "exactly one copy of a concurrently replayed op is applied");
+  assert.equal(duplicates.length, 3, "the rest are answered as duplicates, not applied");
+
+  const { rows } = await query(
+    `SELECT count(*)::int AS n FROM status_updates
+      WHERE project_id = $1 AND summary = 'Replayed during reconnect'`, [project.id]);
+  assert.equal(rows[0].n, 1, "the database holds exactly one row for the burst");
+});
+
+test("P0 idempotency: a failed op releases its id so an honest retry can succeed", async () => {
+  const opId = "retry-after-failure-42";
+  const bad = await infLead.post(`/api/v1/projects/${project.id}/updates`)
+    .set("X-Client-Op-Id", opId)
+    .send({ mood: "NOT_A_MOOD", summary: "invalid payload" });
+  assert.ok(bad.status >= 400, "the op failed");
+
+  // same id, corrected payload — must be allowed through, not stuck as a duplicate
+  const good = await infLead.post(`/api/v1/projects/${project.id}/updates`)
+    .set("X-Client-Op-Id", opId)
+    .send({ mood: "ON_TRACK", summary: "Corrected and retried" });
+  assert.equal(good.status, 201, "a reservation for a failed op is released");
+});
+
 test("P0 multicurrency: totals convert to base currency; unknown currency refused with guidance", async () => {
   await admin.post(`/api/v1/projects/${project.id}/budget-lines`)
     .send({ category: "Hardware", currency: "USD", approved: 100000, forecast: 100000 });

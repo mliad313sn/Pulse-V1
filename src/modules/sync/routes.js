@@ -22,38 +22,59 @@ function bodyHash(req) {
 }
 
 // mounted BEFORE the API routers (after session + body parsing)
+//
+// The op id is RESERVED before the handler runs, not recorded after it. The
+// unique index on (op_id, user_id) is what makes the claim atomic: a replay
+// burst arriving while the first copy is still in flight loses the insert and
+// is answered as a duplicate instead of being applied a second time.
+// A reservation whose request then fails is released, so the client may retry
+// the same op id after fixing the error.
 async function syncIdempotency(req, res, next) {
   const opId = req.get("X-Client-Op-Id");
   if (!opId || !MUTATING.has(req.method)) return next();
   try {
     const userId = req.session?.userId || null;
     const hash = bodyHash(req);
-    const { rows } = await query(
-      `SELECT status_code, method, path, body_hash FROM sync_ops
-        WHERE op_id = $1 AND user_id IS NOT DISTINCT FROM $2`,
-      [opId, userId]
+    const path = req.originalUrl.slice(0, 500);
+
+    const claim = await query(
+      `INSERT INTO sync_ops (op_id, user_id, method, path, status_code, body_hash)
+       VALUES ($1,$2,$3,$4,NULL,$5)
+       ON CONFLICT (op_id, user_id) DO NOTHING
+       RETURNING id`,
+      [opId, userId, req.method, path, hash]
     );
-    if (rows.length) {
+
+    if (!claim.rows.length) {
+      // Someone already owns this op id for this user — replay or misuse.
+      const { rows } = await query(
+        `SELECT status_code, method, path, body_hash FROM sync_ops
+          WHERE op_id = $1 AND user_id IS NOT DISTINCT FROM $2`,
+        [opId, userId]
+      );
       const prev = rows[0];
       // legacy rows have no hash — fall back to method+path match
       const same = prev.body_hash ? prev.body_hash === hash
-        : (prev.method === req.method && prev.path === req.originalUrl.slice(0, 500));
+        : (prev.method === req.method && prev.path === path);
       if (!same) {
         return res.status(409).json({
           error: "This operation id was already used for a different request — the client must issue a new id",
           op_id: opId,
         });
       }
-      return res.status(200).json({ duplicate: true, op_id: opId, original_status: prev.status_code });
+      return res.status(200).json({
+        duplicate: true, op_id: opId, original_status: prev.status_code,
+        ...(prev.status_code === null ? { in_flight: true } : {}),
+      });
     }
+
+    const reservationId = claim.rows[0].id;
     res.on("finish", () => {
-      if (res.statusCode < 400) {
-        query(
-          `INSERT INTO sync_ops (op_id, user_id, method, path, status_code, body_hash)
-           VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (op_id, user_id) DO NOTHING`,
-          [opId, userId, req.method, req.originalUrl.slice(0, 500), res.statusCode, hash]
-        ).catch((e) => console.error("[sync] ledger write failed:", e.message));
-      }
+      const sql = res.statusCode < 400
+        ? [`UPDATE sync_ops SET status_code = $2 WHERE id = $1`, [reservationId, res.statusCode]]
+        // the op did not take effect — release the id so an honest retry works
+        : [`DELETE FROM sync_ops WHERE id = $1`, [reservationId]];
+      query(sql[0], sql[1]).catch((e) => console.error("[sync] ledger write failed:", e.message));
     });
     next();
   } catch (err) {
