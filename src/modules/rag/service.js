@@ -31,6 +31,8 @@ async function recomputeProject(db, projectId, actingUserId) {
          (SELECT max(updated_at) FROM actions WHERE project_id = $1 AND deleted_at IS NULL),
          (SELECT max(updated_at) FROM status_updates WHERE project_id = $1 AND deleted_at IS NULL),
          (SELECT max(updated_at) FROM decisions WHERE project_id = $1 AND deleted_at IS NULL),
+         (SELECT max(updated_at) FROM risks WHERE project_id = $1 AND deleted_at IS NULL),
+         (SELECT max(updated_at) FROM capas WHERE project_id = $1 AND deleted_at IS NULL),
          (SELECT updated_at FROM projects WHERE id = $1)
        ) AS last`,
       [projectId]

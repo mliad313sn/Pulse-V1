@@ -43,6 +43,14 @@ router.post("/roadblocks/:id/escalate", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+router.post("/roadblocks/:id/reopen", async (req, res, next) => {
+  try {
+    const { reason } = z.object({ reason: z.string().min(10).max(500) }).parse(req.body);
+    const roadblock = await service.reopenRoadblock(req.user, Number(req.params.id), reason);
+    res.json({ roadblock });
+  } catch (err) { next(err); }
+});
+
 router.delete("/roadblocks/:id", async (req, res, next) => {
   try {
     await service.softDeleteRoadblock(req.user, Number(req.params.id));

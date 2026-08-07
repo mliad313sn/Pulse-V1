@@ -80,13 +80,40 @@ async function buildAgenda(siteId /* nullable */, meetingType) {
     params
   );
 
+  // (g) gates waiting approval: PLANNING (DESIGN) projects whose milestone
+  // prerequisite is met — only a Steering approver can move them forward
+  const gatesWaiting = await query(
+    `SELECT p.id, p.code, p.title FROM projects p
+      WHERE ${activeProjects} AND p.stage = 'DESIGN'
+        AND EXISTS (SELECT 1 FROM milestones m
+                     WHERE m.project_id = p.id AND m.deleted_at IS NULL)`,
+    params
+  );
+
+  // (h) critical/overdue CAPA
+  const overdueCapa = await query(
+    `SELECT c.id, c.issue, c.due_date, p.id AS project_id
+       FROM capas c JOIN projects p ON p.id = c.project_id
+      WHERE c.deleted_at IS NULL AND c.status <> 'CLOSED'
+        AND c.due_date IS NOT NULL AND c.due_date < (now() AT TIME ZONE 'utc')::date
+        AND ${activeProjects}
+      ORDER BY c.due_date`,
+    params
+  );
+
   // assemble: one item per project, first matching rule tags it; ad-hoc item for overdue actions
   const items = [];
-  const seen = new Set();
+  const byProject = new Map();
   const push = (projectId, reason, note) => {
-    if (projectId && seen.has(projectId)) return;
-    if (projectId) seen.add(projectId);
-    items.push({ project_id: projectId, reason, notes: note });
+    if (projectId && byProject.has(projectId)) {
+      // project already on the agenda — enrich its item instead of dropping the signal
+      const item = byProject.get(projectId);
+      if (note) item.notes = item.notes ? `${item.notes}\n${reason}: ${note}` : `${reason}: ${note}`;
+      return;
+    }
+    const item = { project_id: projectId, reason, notes: note };
+    if (projectId) byProject.set(projectId, item);
+    items.push(item);
   };
 
   // a silent project is RED by construction — keep it in the RED block but with
@@ -109,6 +136,12 @@ async function buildAgenda(siteId /* nullable */, meetingType) {
     push(g.project_id, "GO_LIVE ≤30 days", `${g.title} due ${g.due_date.toISOString().slice(0, 10)}`);
   }
   for (const s of silent.rows) push(s.id, "Silent project (>30d)", null);
+  for (const g of gatesWaiting.rows) {
+    push(g.id, "Gate awaiting Steering approval", "PLANNING → EXECUTION prerequisites met");
+  }
+  for (const c of overdueCapa.rows) {
+    push(c.project_id, "Overdue CAPA", `${c.issue.slice(0, 120)} (due ${c.due_date.toISOString().slice(0, 10)})`);
+  }
 
   return items;
 }

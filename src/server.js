@@ -76,6 +76,8 @@ function createApp(options = {}) {
   app.use("/api/v1/audit", require("./modules/audit/routes"));
   app.use("/api/v1/rag", require("./modules/rag/routes"));
   app.use("/api/v1", require("./modules/deliverables/routes"));
+  app.use("/api/v1", require("./modules/risks/routes"));
+  app.use("/api/v1", require("./modules/capa/routes"));
   app.use("/api/v1/sync", require("./modules/sync/routes").router);
 
   // Reference data for pickers (any authenticated user)

@@ -2,11 +2,20 @@
 const { pool } = require("../../db/pool");
 
 async function create(db, { userId, type, entity, entityId, text, createdBy }) {
-  await (db || pool).query(
+  const { rows } = await (db || pool).query(
     `INSERT INTO notifications (user_id, type, entity, entity_id, text, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6)`,
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
     [userId, type, entity, entityId, text, createdBy || null]
   );
+  // channel dispatch is best-effort AFTER the in-app row and never inside the
+  // business transaction (a Teams outage must not roll back a gate approval)
+  setImmediate(() => {
+    const channels = require("./channels");
+    channels
+      .dispatch({ notificationId: rows[0].id, recipient: `user:${userId}`, subject: type.replace(/_/g, " "), text })
+      .catch(() => {});
+  });
+  return rows[0].id;
 }
 
 async function listForUser(userId, { limit = 50, offset = 0 } = {}) {

@@ -130,6 +130,40 @@ async function escalateRoadblock(actor, id) {
   });
 }
 
+// Reopen a resolved roadblock — requires a reason (plan §27: resolved cannot be
+// escalated unless reopened with reason)
+async function reopenRoadblock(actor, id, reason) {
+  if (typeof reason !== "string" || reason.trim().length < 10) {
+    throw badRequest("Reopening requires a reason of at least 10 characters");
+  }
+  const before = await loadRoadblock(id);
+  if (before.status !== "RESOLVED") throw badRequest("Only a resolved roadblock can be reopened");
+  const projectAccess = await loadProjectAccess(before.project_id, actor);
+  const allowed =
+    projectAccess.access === "FULL" ||
+    (await canEditItem(actor, projectAccess, {
+      owner_division_id: before.raised_by_division_id,
+      owner_user_id: before.owner_user_id,
+    }));
+  if (!allowed) throw forbidden("You cannot reopen this roadblock");
+  return withTransaction(async (client) => {
+    const res = await client.query(
+      `UPDATE roadblocks SET status='OPEN', reopen_reason=$2, resolution_note=NULL, updated_at=now()
+        WHERE id=$1 RETURNING *`,
+      [id, reason.trim()]
+    );
+    await audit.record(client, {
+      entity: "roadblock", entityId: id, userId: actor.id,
+      changes: [
+        { field: "status", old: "RESOLVED", new: "OPEN" },
+        { field: "reopen_reason", old: null, new: reason.trim() },
+      ],
+    });
+    await rag.recomputeProject(client, before.project_id, actor.id);
+    return res.rows[0];
+  });
+}
+
 async function softDeleteRoadblock(actor, id) {
   if (actor.role !== "ADMIN") throw forbidden("Only Admin can delete");
   const r = await loadRoadblock(id);
@@ -140,4 +174,4 @@ async function softDeleteRoadblock(actor, id) {
   });
 }
 
-module.exports = { createRoadblock, updateRoadblock, escalateRoadblock, softDeleteRoadblock };
+module.exports = { createRoadblock, updateRoadblock, escalateRoadblock, reopenRoadblock, softDeleteRoadblock };
