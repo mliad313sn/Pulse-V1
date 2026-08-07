@@ -19,12 +19,12 @@ const getHash = () => (passwordHashPromise ||= bcrypt.hash(TEST_PASSWORD, 12));
 
 async function initDb() {
   await migrate();
-  await query(`TRUNCATE meeting_minutes_versions, notification_deliveries, capas, risks, sync_ops, raci_assignments, deliverables, stage_transitions, audit_log, rag_history, notifications, readiness_items, status_updates,
+  await query(`TRUNCATE task_dependencies, tasks, workstreams, meeting_minutes_versions, notification_deliveries, capas, risks, sync_ops, raci_assignments, deliverables, stage_transitions, audit_log, rag_history, notifications, readiness_items, status_updates,
     decisions, actions, meeting_items, meeting_attendees, meetings, roadblocks, milestones,
     project_sites, project_divisions, projects, users, sequences, sites, divisions, session,
     schema_migrations RESTART IDENTITY CASCADE`);
   // re-record migration (truncate wiped the ledger; schema itself persists)
-  await query(`INSERT INTO schema_migrations (name) VALUES ('001_init.sql'), ('002_ecosystem.sql'), ('003_risk_capa_channels.sql'), ('004_minutes_versions.sql'), ('005_lifecycle.sql') ON CONFLICT DO NOTHING`);
+  await query(`INSERT INTO schema_migrations (name) VALUES ('001_init.sql'), ('002_ecosystem.sql'), ('003_risk_capa_channels.sql'), ('004_minutes_versions.sql'), ('005_lifecycle.sql'), ('006_workstreams_tasks.sql') ON CONFLICT DO NOTHING`);
 }
 
 // Standard fixture: divisions, sites, one user per role + a second contributor

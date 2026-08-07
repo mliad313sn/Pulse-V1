@@ -46,6 +46,7 @@ export async function renderProject(container, projectId) {
       <div>
         <div class="tabs">
           <button data-tab="timeline">Timeline</button>
+          <button data-tab="plan">Plan</button>
           <button data-tab="roadblocks">Roadblocks ${d.roadblocks.filter((r) => r.status !== "RESOLVED").length ? `<span class="badge-count">${d.roadblocks.filter((r) => r.status !== "RESOLVED").length}</span>` : ""}</button>
           <button data-tab="actions">Actions</button>
           <button data-tab="updates">Updates &amp; Decisions</button>
@@ -81,6 +82,7 @@ export async function renderProject(container, projectId) {
   const tabContent = container.querySelector("#tab-content");
   const tabs = {
     timeline: () => timelineTab(d, canFull, reload),
+    plan: () => planTab(d, canFull, reload),
     roadblocks: () => roadblocksTab(d, canFull, canPartial, reload),
     actions: () => actionsTab(d, canPartial, reload),
     updates: () => updatesTab(d, canFull, canPartial, reload),
@@ -441,6 +443,81 @@ function updatesTab(d, canFull, canPartial, reload) {
       toast("Decision logged");
       reload();
     } catch (err) { showError(err); }
+  });
+  return wrap;
+}
+
+// ===== Plan tab (E07: workstreams, tasks, critical path) =====
+function planTab(d, canFull, reload) {
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `<div class="panel"><div class="panel-body muted">Loading plan…</div></div>`;
+  api.get(`/api/v1/projects/${d.project.id}/plan`).then((plan) => {
+    const critical = new Set(plan.criticalPath.criticalIds || []);
+    const wsName = Object.fromEntries(plan.workstreams.map((w) => [w.id, w.title]));
+    wrap.innerHTML = `<div class="panel">
+      ${canFull ? `<div class="quickadd">
+        <input type="text" id="ws-title" placeholder="Add workstream… (Enter)">
+        <select id="ws-lead">${optionList(state.meta.users.filter((u) => u.role !== "VIEWER"), "id", (u) => u.name, "", "Lead…")}</select>
+      </div>` : ""}
+      <div class="panel-body">
+        <div class="muted" style="margin-bottom:8px">
+          Critical path: <b>${plan.criticalPath.projectLength || 0} day(s)</b> ·
+          ${critical.size} critical task(s) marked ⚑</div>
+        ${plan.workstreams.map((w) => `<div style="margin-bottom:4px">
+          <b style="color:var(--edv-navy)">${esc(w.title)}</b>
+          <span class="pill ${w.status === "DONE" ? "DONE" : w.status === "IN_PROGRESS" ? "IN_PROGRESS" : "NOT_STARTED"}">${esc(w.status.replace("_", " "))}</span>
+          <span class="muted">${esc(w.lead_name || "no lead")} · ${fmtDate(w.start_date)} → ${fmtDate(w.end_date)}</span></div>`).join("") || '<span class="muted">No workstreams yet.</span>'}
+      </div>
+      ${canFull ? `<div class="quickadd" style="border-radius:0">
+        <input type="text" id="task-title" placeholder="Add task… (Enter)">
+        <select id="task-ws"><option value="">No workstream</option>${plan.workstreams.map((w) => `<option value="${w.id}">${esc(w.title)}</option>`).join("")}</select>
+        <select id="task-owner">${optionList(state.meta.users.filter((u) => u.role !== "VIEWER"), "id", (u) => u.name, "", "Owner…")}</select>
+        <input type="date" id="task-start"><input type="date" id="task-finish">
+      </div>` : ""}
+      ${plan.tasks.length ? `<table class="ms-list">
+        <tr><th></th><th>Task</th><th>Workstream</th><th>Owner</th><th>Planned</th><th>Slack</th><th>Status</th></tr>
+        ${plan.tasks.map((t) => `<tr>
+          <td>${critical.has(t.id) ? '<span title="Critical path" style="color:var(--rag-red)">⚑</span>' : ""}</td>
+          <td>${esc(t.title)}</td>
+          <td class="muted">${esc(wsName[t.workstream_id] || "—")}</td>
+          <td class="muted">${esc(t.owner_name || "—")}</td>
+          <td>${fmtDate(t.planned_start)} → ${fmtDate(t.planned_finish)}</td>
+          <td class="muted">${plan.criticalPath.slack ? (plan.criticalPath.slack[t.id] ?? "—") + "d" : "—"}</td>
+          <td><select data-task="${t.id}" data-ua="${t.updated_at}">
+            ${["NOT_STARTED", "IN_PROGRESS", "BLOCKED", "DONE", "CANCELLED"].map((st) => `<option ${t.status === st ? "selected" : ""}>${st}</option>`).join("")}
+          </select></td></tr>`).join("")}</table>` : emptyState("▦", "No tasks yet.", canFull ? "Add tasks above; link dependencies via the API or upcoming Gantt view." : "")}
+    </div>`;
+    const wsAdd = wrap.querySelector("#ws-title");
+    if (wsAdd) wsAdd.addEventListener("keydown", async (e) => {
+      if (e.key !== "Enter" || !wsAdd.value.trim()) return;
+      try {
+        await api.post(`/api/v1/projects/${d.project.id}/workstreams`, {
+          title: wsAdd.value.trim(),
+          lead_user_id: wrap.querySelector("#ws-lead").value ? Number(wrap.querySelector("#ws-lead").value) : null,
+        });
+        toast("Workstream added"); reload();
+      } catch (err) { showError(err); }
+    });
+    const tAdd = wrap.querySelector("#task-title");
+    if (tAdd) tAdd.addEventListener("keydown", async (e) => {
+      if (e.key !== "Enter" || !tAdd.value.trim()) return;
+      try {
+        await api.post(`/api/v1/projects/${d.project.id}/tasks`, {
+          title: tAdd.value.trim(),
+          workstream_id: wrap.querySelector("#task-ws").value ? Number(wrap.querySelector("#task-ws").value) : null,
+          owner_user_id: wrap.querySelector("#task-owner").value ? Number(wrap.querySelector("#task-owner").value) : null,
+          planned_start: wrap.querySelector("#task-start").value || null,
+          planned_finish: wrap.querySelector("#task-finish").value || null,
+        });
+        toast("Task added"); reload();
+      } catch (err) { showError(err); }
+    });
+    wrap.querySelectorAll("[data-task]").forEach((sel) => sel.onchange = async () => {
+      try {
+        await api.put(`/api/v1/tasks/${sel.dataset.task}`, { status: sel.value, updated_at: sel.dataset.ua });
+        toast("Task updated"); reload();
+      } catch (err) { showError(err); if (err.status === 409) reload(); }
+    });
   });
   return wrap;
 }

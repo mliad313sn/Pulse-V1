@@ -31,7 +31,7 @@ async function seed(force = false) {
       console.log("Database already seeded — run `npm run seed -- --force` to wipe and reseed.");
       return;
     }
-    await pool.query(`TRUNCATE meeting_minutes_versions, notification_deliveries, capas, risks, sync_ops, raci_assignments, deliverables, stage_transitions, audit_log, rag_history, notifications, readiness_items, status_updates,
+    await pool.query(`TRUNCATE task_dependencies, tasks, workstreams, meeting_minutes_versions, notification_deliveries, capas, risks, sync_ops, raci_assignments, deliverables, stage_transitions, audit_log, rag_history, notifications, readiness_items, status_updates,
       decisions, actions, meeting_items, meeting_attendees, meetings, roadblocks, milestones,
       project_sites, project_divisions, projects, users, sequences, sites, divisions, session
       RESTART IDENTITY CASCADE`);

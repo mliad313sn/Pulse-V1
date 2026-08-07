@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **81/81 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **89/89 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -41,7 +41,6 @@ Freshness exemption now stage RUN/CLOSED or op-status ON_HOLD/CANCELLED/COMPLETE
 Channel dispatch made commit-race tolerant (FK retry then unlinked ledger row).
 
 ## Next executable work items (dependency order)
-1. **E07**: workstreams + tasks + dependencies (cycle rejection) + critical path util (+unit tests) — prerequisite for Gantt UI.
 4. **E04 finish**: pillars/portfolios/programs entities + portfolio filter.
 5. **E21**: reminder engine (T-14/T-7/T-2/T0/T+1/T+7) with idempotent cron + dedupe keys.
 6. **E22**: Executive Command Center view; KPI drill-throughs.

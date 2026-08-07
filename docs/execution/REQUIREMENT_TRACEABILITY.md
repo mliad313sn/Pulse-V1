@@ -12,7 +12,7 @@ Evidence = test file(s) unless noted. Updated: 2026-08-07.
 | E04 Portfolio/program/project | §10,11 | PARTIAL | projects w/ safe codes, divisions/sites, Project Room | projects.test (20-parallel codes). Gap: pillars/portfolio/program entities |
 | E05 Lifecycle & governance | §12–14 | COMPLETE (core) | 7-stage lifecycle (IDEA→INITIATION→PLANNING→EXECUTION→DEPLOYMENT→RUN→CLOSED), separate operating status (ON_HOLD/CANCELLED with reasons, cancelled terminal), Gates 0-5 with per-gate prerequisites, Steering-only Gate 2, transition ledger, War Room checklists | stageGates.test (7), ecosystem.test. Gap: data-driven gate config, gate request/evidence records |
 | E06 Change/baseline | §15,185 | NOT_STARTED | — | — |
-| E07 Workstreams/tasks/Gantt | §17,18,20,184 | NOT_STARTED | — | — |
+| E07 Workstreams/tasks/Gantt | §17,18,20,184 | PARTIAL | workstreams (lead-scoped edit), tasks (5 statuses, hours, dates), FS/SS/FF/SF dependency storage, server-side cycle rejection, pure critical-path engine (forward/backward pass, slack), /plan endpoint, Plan tab UI with CP markers + quick-adds | schedule.test (5), tasks.test (3). Gap: visual Gantt with drag, baseline vs forecast dates |
 | E08 Milestones/progress/readiness | §21–23 | PARTIAL | 5 milestone types, readiness auto-checklist, computed progress | rag.test. Gap: weighted progress, forecast vs baseline dates, readiness template admin |
 | E09 Actions | §19 | COMPLETE | quick-add, notify, done/cancel, sources, overdue analytics | permissions/meetings/reports tests |
 | E10 Health | §24–26 | COMPLETE (core) | 4 signals worst-wins, explained tooltips, override ≥30 chars + badge + audit, freshness exemptions, rag_history trend | computeRag.test (18), rag.test (8). Optional extra dimensions not configured |
