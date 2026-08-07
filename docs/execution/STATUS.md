@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **134/134 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **141/141 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -83,9 +83,9 @@ Deps: exceljs+pdfkit+pptxgenjs added (uuid overridden to ^11 — audit stays 0).
 A second /goal directive extends the completed master plan into a Strategic
 Portfolio Management platform. Phases (dependency order; each = tested slices):
 - **P0 Trust & Correctness — DONE this round** (see below)
-- **P1 Strategy & Demand**: OKRs/objectives; demand/idea lifecycle; business
-  cases; scoring (weighted, WSJF, RICE, cost-of-delay, mandatory override);
-  prioritization; demand→project conversion; project templates; custom fields.
+- **P1 Strategy & Demand — PARTIAL**: demand/idea lifecycle + scoring +
+  conversion DONE (see below). REMAINING: objectives/OKRs entities linked to
+  pillars/projects; project templates/blueprints; custom fields; demand UI view.
 - **P2 Advanced planning**: WBS/summary tasks; effort/remaining; calendars +
   exceptions; constraints; task baselines + variance; cross-project deps;
   blast-radius; schedule quality checks; resource leveling. (FS/SS/FF/SF +
@@ -114,6 +114,19 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
   progressive disclosure per role.
 - **P12 Scale/ops**: Redis coordination; outbox/DLQ; OpenTelemetry; PITR;
   SLOs; performance tests.
+
+## Completed: SPM P1 slice 1 — demand management (2026-08-07)
+Migration 016: demands (problem/outcome hypothesis, business case, scoring
+inputs, mandatory override with reason CHECK, decision fields, permanent
+converted_project_id link + projects.demand_id backlink). Pure explainable
+scoring module (WSJF, RICE, weighted, CD3 — every score returns formula +
+missing inputs; mandatory pins to top). Lifecycle DRAFT→SUBMITTED→APPROVED/
+REJECTED→CONVERTED: any non-Viewer raises ideas (defaults to own division/
+site), requester/DL/Admin edit, Steering/Admin decide with note, Admin/DL
+convert approved demands into IDEA-stage projects (governance tier choosable);
+converted demands frozen; everything audited; optimistic locking throughout.
+Endpoints: /api/v1/demands (+/ranked?model=, /decision, /convert).
+NO UI YET — next P1 slice adds the Demand backlog view + OKRs.
 
 ## Completed: SPM Phase 0 — Trust & Correctness (2026-08-07)
 - Fail-closed SESSION_SECRET in production (src/config.js; CI asserts refusal)
