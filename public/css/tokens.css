@@ -20,7 +20,16 @@
   /* Neutrals derived from the navy for a coherent surface scale */
   --ink: #17293d;
   --ink-soft: #4a5d72;
-  --ink-faint: #8496a9;
+  /* WCAG AA (E28): 5.8:1 on white, 5.4:1 on --surface */
+  --ink-faint: #56677a;
+  /* orange readable as TEXT on light surfaces (5.0:1); brand --edv-orange stays for fills */
+  --accent-text: #B45309;
+  /* orange readable as text on the navy sidenav (6.5:1) */
+  --accent-on-navy: #F5B57E;
+  /* RAG hues darkened for use as TEXT on light surfaces (AA ≥4.5:1);
+     fills/dots/decks keep the exact brand --rag-* hexes */
+  --rag-amber-text: #8F6400;
+  --rag-green-text: #1d6e63;
   --surface: #f4f6f9;
   --surface-card: #ffffff;
   --line: #dde4ec;

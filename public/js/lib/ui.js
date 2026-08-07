@@ -1,5 +1,6 @@
 "use strict";
 // Tiny DOM helpers — no framework, no build (plan §6).
+import { t } from "./i18n.js";
 
 export function esc(s) {
   return String(s ?? "")
@@ -30,8 +31,8 @@ export function toast(msg, isError = false) {
 // Standard error reporter — surfaces 409s with guidance
 export function showError(err) {
   if (err.queued) toast(err.message); // queued offline — informative, not an error
-  else if (err.status === 409) toast("This item changed since you loaded it — review and retry.", true);
-  else toast(err.message || "Something went wrong", true);
+  else if (err.status === 409) toast(t("err.conflict"), true);
+  else toast(err.message || t("err.generic"), true);
 }
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -52,7 +53,7 @@ export function monthYear(d = new Date()) {
   return `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
-export const RAG_LABEL = { G: "Green", A: "Amber", R: "Red" };
+export const RAG_LABEL = { get G() { return t("rag.G"); }, get A() { return t("rag.A"); }, get R() { return t("rag.R"); } };
 export const effectiveRag = (p) => p.rag_override || p.rag_computed;
 
 export function ragDot(p, size = "") {

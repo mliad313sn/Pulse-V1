@@ -1,0 +1,152 @@
+"use strict";
+// E28 — internationalization (plan §69): EN + FR, no build step.
+// t(key, params) resolves against the active language, falls back to English,
+// then to the key itself (visible marker for a missing string — never blank).
+// Language is a per-browser preference; switching re-renders the current view.
+
+const DICT = {
+  en: {
+    // chrome / auth
+    "app.tagline": "ENDEAVOUR MINING — GROUP IT · IT PROJECT TRACKING",
+    "auth.email": "Email",
+    "auth.password": "Password",
+    "auth.signIn": "Sign in",
+    "auth.firstLogin": "FIRST LOGIN — SET YOUR OWN PASSWORD",
+    "auth.changePassword": "CHANGE PASSWORD",
+    "auth.currentPassword": "Current password",
+    "auth.newPassword": "New password (min 10 characters)",
+    "auth.repeatPassword": "Repeat new password",
+    "auth.changeBtn": "Change password",
+    "auth.noMatch": "New passwords do not match",
+    "auth.changed": "Password changed",
+    "nav.portfolio": "Portfolio",
+    "nav.portfolios": "Portfolios",
+    "nav.meetings": "Meetings",
+    "nav.sites": "Sites",
+    "nav.my": "My Actions",
+    "nav.warroom": "War Room",
+    "nav.exec": "Executive",
+    "nav.reports": "Reports",
+    "nav.admin": "Admin",
+    "nav.changePwd": "Change password",
+    "nav.signOut": "Sign out",
+    "nav.gmt": "All times GMT",
+    "err.conflict": "This item changed since you loaded it — review and retry.",
+    "err.generic": "Something went wrong",
+    // portfolio wall
+    "wall.title": "Portfolio Wall",
+    "wall.sub": "Every active project · KPI banner reflects active filters",
+    "wall.newProject": "＋ New project",
+    "wall.filter": "Filter:",
+    "wall.divisionAll": "Division — all",
+    "wall.siteAll": "Site — all",
+    "wall.stageAll": "Stage — all",
+    "wall.ragAll": "RAG — all",
+    "wall.priorityAll": "Priority — all",
+    "wall.pmAll": "PM — all",
+    "wall.clear": "✕ Clear filters",
+    "wall.exportDeck": "⬇ Export deck (respects filters)",
+    "wall.emptyTitle": "No projects match these filters.",
+    "wall.emptyHint": "Widen the filters, or create the first project for this scope.",
+    "wall.hierarchyOn.portfolio": "Portfolio filter on",
+    "wall.hierarchyOn.program": "Program filter on",
+    // my work
+    "my.title": "My Actions",
+    "my.sub": "Your open work, sorted by due date — one tap Done",
+    "my.pmProjects": "Projects I manage ({n})",
+    "my.openActions": "Open actions ({n})",
+    "my.roadblocks": "Roadblocks I own ({n})",
+    "my.milestones": "My milestones due ≤ 30 days ({n})",
+    "my.emptyActions": "Nothing open — enjoy it while it lasts.",
+    "my.none": "None.",
+    "my.target": "Target",
+    "my.general": "general",
+    "my.done": "Done",
+    // shared
+    "common.loading": "Loading…",
+    "common.save": "Save",
+    "common.cancel": "Cancel",
+    "rag.G": "Green",
+    "rag.A": "Amber",
+    "rag.R": "Red",
+  },
+  fr: {
+    "app.tagline": "ENDEAVOUR MINING — GROUP IT · SUIVI DES PROJETS IT",
+    "auth.email": "E-mail",
+    "auth.password": "Mot de passe",
+    "auth.signIn": "Se connecter",
+    "auth.firstLogin": "PREMIÈRE CONNEXION — CHOISISSEZ VOTRE MOT DE PASSE",
+    "auth.changePassword": "CHANGER LE MOT DE PASSE",
+    "auth.currentPassword": "Mot de passe actuel",
+    "auth.newPassword": "Nouveau mot de passe (10 caractères min)",
+    "auth.repeatPassword": "Répéter le nouveau mot de passe",
+    "auth.changeBtn": "Changer le mot de passe",
+    "auth.noMatch": "Les nouveaux mots de passe ne correspondent pas",
+    "auth.changed": "Mot de passe modifié",
+    "nav.portfolio": "Portefeuille",
+    "nav.portfolios": "Portefeuilles",
+    "nav.meetings": "Réunions",
+    "nav.sites": "Sites",
+    "nav.my": "Mes actions",
+    "nav.warroom": "Cellule de crise",
+    "nav.exec": "Direction",
+    "nav.reports": "Rapports",
+    "nav.admin": "Admin",
+    "nav.changePwd": "Changer le mot de passe",
+    "nav.signOut": "Se déconnecter",
+    "nav.gmt": "Heures en GMT",
+    "err.conflict": "Cet élément a changé depuis votre lecture — vérifiez et réessayez.",
+    "err.generic": "Une erreur est survenue",
+    "wall.title": "Mur des projets",
+    "wall.sub": "Tous les projets actifs · les indicateurs reflètent les filtres actifs",
+    "wall.newProject": "＋ Nouveau projet",
+    "wall.filter": "Filtrer :",
+    "wall.divisionAll": "Division — toutes",
+    "wall.siteAll": "Site — tous",
+    "wall.stageAll": "Phase — toutes",
+    "wall.ragAll": "RAG — tous",
+    "wall.priorityAll": "Priorité — toutes",
+    "wall.pmAll": "Chef de projet — tous",
+    "wall.clear": "✕ Effacer les filtres",
+    "wall.exportDeck": "⬇ Exporter le deck (selon filtres)",
+    "wall.emptyTitle": "Aucun projet ne correspond à ces filtres.",
+    "wall.emptyHint": "Élargissez les filtres ou créez le premier projet de ce périmètre.",
+    "wall.hierarchyOn.portfolio": "Filtre portefeuille actif",
+    "wall.hierarchyOn.program": "Filtre programme actif",
+    "my.title": "Mes actions",
+    "my.sub": "Votre travail en cours, trié par échéance — terminé en un clic",
+    "my.pmProjects": "Projets que je gère ({n})",
+    "my.openActions": "Actions ouvertes ({n})",
+    "my.roadblocks": "Blocages dont je suis responsable ({n})",
+    "my.milestones": "Mes jalons à ≤ 30 jours ({n})",
+    "my.emptyActions": "Rien d'ouvert — profitez-en.",
+    "my.none": "Aucun.",
+    "my.target": "Cible",
+    "my.general": "général",
+    "my.done": "Terminé",
+    "common.loading": "Chargement…",
+    "common.save": "Enregistrer",
+    "common.cancel": "Annuler",
+    "rag.G": "Vert",
+    "rag.A": "Orange",
+    "rag.R": "Rouge",
+  },
+};
+
+export let lang = localStorage.getItem("pulse.lang") || "en";
+document.documentElement.lang = lang;
+
+export function t(key, params) {
+  let s = DICT[lang][key] ?? DICT.en[key] ?? key;
+  if (params) for (const [k, v] of Object.entries(params)) s = s.replaceAll(`{${k}}`, v);
+  return s;
+}
+
+export function setLang(next) {
+  if (!DICT[next]) return;
+  lang = next;
+  localStorage.setItem("pulse.lang", next);
+  document.documentElement.lang = next;
+}
+
+export const LANGS = ["en", "fr"];

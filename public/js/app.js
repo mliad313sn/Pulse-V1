@@ -12,20 +12,26 @@ import { renderWarRoom } from "./views/warRoom.js";
 import { renderExecutive } from "./views/executive.js";
 import { renderPortfolios } from "./views/portfolios.js";
 import { flush, countQueued, isBlocked, retryAfterReview, discardHead } from "./lib/syncQueue.js";
+import { t, lang, setLang, LANGS } from "./lib/i18n.js";
 
 const app = document.getElementById("app");
 
 // ===== login / password-change screens =====
 function renderLogin() {
   app.innerHTML = "";
-  app.appendChild(el(`<div class="login-wrap"><form class="login-card">
-    <div class="logo">PULSE<span>.</span></div>
-    <div class="org">ENDEAVOUR MINING — GROUP IT · IT PROJECT TRACKING</div>
-    <label>Email</label><input name="email" type="email" autocomplete="username" required autofocus>
-    <label>Password</label><input name="password" type="password" autocomplete="current-password" required>
-    <div class="login-error" style="display:none"></div>
-    <button class="btn primary" type="submit">Sign in</button>
-  </form></div>`));
+  app.appendChild(el(`<main class="login-wrap"><form class="login-card" aria-label="${t("auth.signIn")}">
+    <h1 class="logo" style="margin:0">PULSE<span>.</span></h1>
+    <div class="org">${t("app.tagline")}</div>
+    <label for="login-email">${t("auth.email")}</label><input id="login-email" name="email" type="email" autocomplete="username" required autofocus>
+    <label for="login-password">${t("auth.password")}</label><input id="login-password" name="password" type="password" autocomplete="current-password" required>
+    <div class="login-error" role="alert" style="display:none"></div>
+    <button class="btn primary" type="submit">${t("auth.signIn")}</button>
+    <div style="margin-top:.7rem;text-align:center">${LANGS.map((l) =>
+      `<button type="button" class="inline-link lang-pick" data-lang="${l}" ${l === lang ? 'style="font-weight:700"' : ""}>${l.toUpperCase()}</button>`).join(" · ")}</div>
+  </form></main>`));
+  for (const b of app.querySelectorAll(".lang-pick")) {
+    b.onclick = () => { setLang(b.dataset.lang); renderLogin(); };
+  }
   app.querySelector("form").onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target;
@@ -53,14 +59,14 @@ function renderLogin() {
 
 function renderChangePassword(forced = false) {
   app.innerHTML = "";
-  app.appendChild(el(`<div class="login-wrap"><form class="login-card">
+  app.appendChild(el(`<div class="login-wrap"><form class="login-card" aria-label="${t("auth.changeBtn")}">
     <div class="logo">PULSE<span>.</span></div>
-    <div class="org">${forced ? "FIRST LOGIN — SET YOUR OWN PASSWORD" : "CHANGE PASSWORD"}</div>
-    <label>Current password</label><input name="current" type="password" autocomplete="current-password" required autofocus>
-    <label>New password (min 10 characters)</label><input name="next" type="password" autocomplete="new-password" minlength="10" required>
-    <label>Repeat new password</label><input name="repeat" type="password" autocomplete="new-password" minlength="10" required>
-    <div class="login-error" style="display:none"></div>
-    <button class="btn primary" type="submit">Change password</button>
+    <div class="org">${forced ? t("auth.firstLogin") : t("auth.changePassword")}</div>
+    <label for="pwd-current">${t("auth.currentPassword")}</label><input id="pwd-current" name="current" type="password" autocomplete="current-password" required autofocus>
+    <label for="pwd-next">${t("auth.newPassword")}</label><input id="pwd-next" name="next" type="password" autocomplete="new-password" minlength="10" required>
+    <label for="pwd-repeat">${t("auth.repeatPassword")}</label><input id="pwd-repeat" name="repeat" type="password" autocomplete="new-password" minlength="10" required>
+    <div class="login-error" role="alert" style="display:none"></div>
+    <button class="btn primary" type="submit">${t("auth.changeBtn")}</button>
   </form></div>`));
   app.querySelector("form").onsubmit = async (e) => {
     e.preventDefault();
@@ -68,7 +74,7 @@ function renderChangePassword(forced = false) {
     const errBox = f.querySelector(".login-error");
     errBox.style.display = "none";
     if (f.next.value !== f.repeat.value) {
-      errBox.textContent = "New passwords do not match";
+      errBox.textContent = t("auth.noMatch");
       errBox.style.display = "block";
       return;
     }
@@ -76,7 +82,7 @@ function renderChangePassword(forced = false) {
       await api.post("/api/v1/auth/change-password", {
         currentPassword: f.current.value, newPassword: f.next.value,
       });
-      toast("Password changed");
+      toast(t("auth.changed"));
       state.user.mustChangePassword = false;
       await loadMeta();
       location.hash = "#/portfolio";
@@ -94,16 +100,16 @@ let notifTimer = null;
 function shell(active, contentNode) {
   const u = state.user;
   const nav = [
-    ["portfolio", "▦ Portfolio", "#/portfolio"],
-    ["portfolios", "▤ Portfolios", "#/portfolios"],
-    ["meetings", "▶ Meetings", "#/meetings"],
-    ["sites", "◎ Sites", "#/sites"],
-    ["my", "☑ My Actions", "#/my"],
-    ["warroom", "⚑ War Room", "#/warroom"],
-    ["exec", "◆ Executive", "#/exec"],
-    ["reports", "📊 Reports", "#/reports"],
+    ["portfolio", `▦ ${t("nav.portfolio")}`, "#/portfolio"],
+    ["portfolios", `▤ ${t("nav.portfolios")}`, "#/portfolios"],
+    ["meetings", `▶ ${t("nav.meetings")}`, "#/meetings"],
+    ["sites", `◎ ${t("nav.sites")}`, "#/sites"],
+    ["my", `☑ ${t("nav.my")}`, "#/my"],
+    ["warroom", `⚑ ${t("nav.warroom")}`, "#/warroom"],
+    ["exec", `◆ ${t("nav.exec")}`, "#/exec"],
+    ["reports", `📊 ${t("nav.reports")}`, "#/reports"],
   ];
-  if (u.role === "ADMIN") nav.push(["admin", "⚙ Admin", "#/admin"]);
+  if (u.role === "ADMIN") nav.push(["admin", `⚙ ${t("nav.admin")}`, "#/admin"]);
   app.innerHTML = "";
   const root = el(`<div class="shell">
     <aside class="sidenav">
@@ -112,8 +118,10 @@ function shell(active, contentNode) {
       <nav>${nav.map(([k, label, href]) =>
         `<a class="${k === active ? "active" : ""}" href="${href}">${label}</a>`).join("")}</nav>
       <div class="mock-note">${esc(u.name)} · ${esc(u.role.replace("_", " "))}<br>
-        <span class="inline-link" id="nav-pwd">Change password</span> ·
-        <span class="inline-link" id="nav-logout">Sign out</span><br>All times GMT</div>
+        <span class="inline-link" id="nav-pwd" role="button" tabindex="0">${t("nav.changePwd")}</span> ·
+        <span class="inline-link" id="nav-logout" role="button" tabindex="0">${t("nav.signOut")}</span><br>
+        ${t("nav.gmt")} · ${LANGS.map((l) =>
+          `<span class="inline-link lang-pick" role="button" tabindex="0" data-lang="${l}" ${l === lang ? 'style="font-weight:700"' : ""}>${l.toUpperCase()}</span>`).join("/")}</div>
     </aside>
     <div class="main">
       <div class="topbar">
@@ -125,7 +133,7 @@ function shell(active, contentNode) {
         <div id="notif-drop" class="notif-drop" style="display:none"></div>
         <span id="topbar-actions"></span>
       </div>
-      <div class="content" id="view"></div>
+      <main class="content" id="view"></main>
     </div>
   </div>`);
   app.appendChild(root);
@@ -137,6 +145,9 @@ function shell(active, contentNode) {
     location.hash = "#/login";
   };
   root.querySelector("#nav-pwd").onclick = () => renderChangePassword(false);
+  for (const b of root.querySelectorAll(".lang-pick")) {
+    b.onclick = () => { setLang(b.dataset.lang); route(); };
+  }
 
   // notifications bell
   const bell = root.querySelector("#bell");

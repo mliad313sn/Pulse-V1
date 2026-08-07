@@ -2,6 +2,7 @@
 import { api, state } from "../lib/api.js";
 import { el, esc, fmtDate, daysUntil, ragDot, avatar, emptyState, effectiveRag, optionList, modal, toast } from "../lib/ui.js";
 import { exportGroupDeck } from "../lib/deck.js";
+import { t } from "../lib/i18n.js";
 
 const FILTERS = { division: "", site: "", stage: "", rag: "", priority: "", pm: "", q: "", portfolio: "", program: "" };
 
@@ -29,7 +30,7 @@ export function projectCard(p) {
   const siteChips = (p.sites || []).map((s) => `<span class="chip site">${esc(s)}</span>`).join("");
   const rb = p.top_roadblock
     ? `<span class="warn">⚑ ${esc(p.top_roadblock.title)} (${esc(p.top_roadblock.severity)})</span>`
-    : `<span style="color:var(--rag-green)">✓ No open roadblocks</span>`;
+    : `<span style="color:var(--rag-green-text)">✓ No open roadblocks</span>`;
   const nm = p.next_milestone
     ? `◈ Next: ${esc(p.next_milestone.title)} — <b>${fmtDate(p.next_milestone.due_date)}</b>`
     : `<span class="muted">No open milestones</span>`;
@@ -108,23 +109,23 @@ export async function renderPortfolio(container) {
     FILTERS.program = qs.get("program") || "";
   }
   container.innerHTML = `
-    <div class="page-head"><h1>Portfolio Wall</h1>
-      <span class="sub">Every active project · KPI banner reflects active filters</span>
-      ${["ADMIN", "DIVISION_LEAD"].includes(state.user.role) ? '<button class="btn navy" id="new-project" style="margin-left:auto">＋ New project</button>' : ""}
+    <div class="page-head"><h1>${t("wall.title")}</h1>
+      <span class="sub">${t("wall.sub")}</span>
+      ${["ADMIN", "DIVISION_LEAD"].includes(state.user.role) ? `<button class="btn navy" id="new-project" style="margin-left:auto">${t("wall.newProject")}</button>` : ""}
     </div>
     <div class="kpi-banner" id="kpis"></div>
     <div class="filterbar">
-      <span class="flabel">Filter:</span>
-      <select id="f-division">${optionList(m.divisions, "code", (d) => `${d.code} — ${d.name}`, FILTERS.division, "Division — all")}</select>
-      <select id="f-site">${optionList(m.sites, "code", (s) => s.code, FILTERS.site, "Site — all")}</select>
-      <select id="f-stage"><option value="">Stage — all</option>${["IDEA", "INITIATION", "PLANNING", "EXECUTION", "DEPLOYMENT", "RUN", "CLOSED"].map((s) => `<option ${FILTERS.stage === s ? "selected" : ""}>${s}</option>`).join("")}</select>
-      <select id="f-rag"><option value="">RAG — all</option>${["G", "A", "R"].map((r) => `<option ${FILTERS.rag === r ? "selected" : ""}>${r}</option>`).join("")}</select>
-      <select id="f-priority"><option value="">Priority — all</option>${["P1", "P2", "P3"].map((p) => `<option ${FILTERS.priority === p ? "selected" : ""}>${p}</option>`).join("")}</select>
-      <select id="f-pm">${optionList(m.users.filter((u) => u.role !== "VIEWER"), "id", (u) => u.name, FILTERS.pm, "PM — all")}</select>
-      ${FILTERS.portfolio || FILTERS.program ? `<span class="pill DONE">${FILTERS.program ? "Program" : "Portfolio"} filter on</span>` : ""}
-      <button class="clear" id="f-clear">✕ Clear filters</button>
+      <span class="flabel">${t("wall.filter")}</span>
+      <select id="f-division" aria-label="${t("wall.divisionAll")}">${optionList(m.divisions, "code", (d) => `${d.code} — ${d.name}`, FILTERS.division, t("wall.divisionAll"))}</select>
+      <select id="f-site" aria-label="${t("wall.siteAll")}">${optionList(m.sites, "code", (s) => s.code, FILTERS.site, t("wall.siteAll"))}</select>
+      <select id="f-stage" aria-label="${t("wall.stageAll")}"><option value="">${t("wall.stageAll")}</option>${["IDEA", "INITIATION", "PLANNING", "EXECUTION", "DEPLOYMENT", "RUN", "CLOSED"].map((s) => `<option ${FILTERS.stage === s ? "selected" : ""}>${s}</option>`).join("")}</select>
+      <select id="f-rag" aria-label="${t("wall.ragAll")}"><option value="">${t("wall.ragAll")}</option>${["G", "A", "R"].map((r) => `<option ${FILTERS.rag === r ? "selected" : ""}>${r}</option>`).join("")}</select>
+      <select id="f-priority" aria-label="${t("wall.priorityAll")}"><option value="">${t("wall.priorityAll")}</option>${["P1", "P2", "P3"].map((p) => `<option ${FILTERS.priority === p ? "selected" : ""}>${p}</option>`).join("")}</select>
+      <select id="f-pm" aria-label="${t("wall.pmAll")}">${optionList(m.users.filter((u) => u.role !== "VIEWER"), "id", (u) => u.name, FILTERS.pm, t("wall.pmAll"))}</select>
+      ${FILTERS.portfolio || FILTERS.program ? `<span class="pill DONE">${FILTERS.program ? t("wall.hierarchyOn.program") : t("wall.hierarchyOn.portfolio")}</span>` : ""}
+      <button class="clear" id="f-clear">${t("wall.clear")}</button>
       <span style="flex:1"></span>
-      <button class="btn primary" id="export-deck">⬇ Export deck (respects filters)</button>
+      <button class="btn primary" id="export-deck">${t("wall.exportDeck")}</button>
     </div>
     <div class="card-grid" id="cards"></div>`;
 
@@ -137,7 +138,7 @@ export async function renderPortfolio(container) {
     container.querySelector("#kpis").innerHTML = kpiBanner(current);
     container.querySelector("#cards").innerHTML = current.length
       ? current.map(projectCard).join("")
-      : emptyState("◎", "No projects match these filters.", "Widen the filters, or create the first project for this scope.");
+      : emptyState("◎", t("wall.emptyTitle"), t("wall.emptyHint"));
   }
 
   for (const key of ["division", "site", "stage", "rag", "priority", "pm"]) {

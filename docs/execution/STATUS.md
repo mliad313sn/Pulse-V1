@@ -58,8 +58,17 @@ the wall — confidential projects never inflate an unauthorized viewer's counts
 finance summary masked without the flag. `#/portfolios` view with deep links,
 demo hierarchy seeded. Browser smoke clean.
 
+## Completed: E28 phase 1 — i18n core journey + a11y gate (2026-08-07)
+EN/FR i18n layer with language switcher; core journey translated (login,
+password change, nav, wall chrome, My Actions, RAG labels, error toasts).
+WCAG AA contrast repaired via text-safe tokens (brand hexes untouched for
+fills/decks). `npm run a11y` boots the app in Chromium, injects axe-core and
+FAILS on any serious/critical violation, plus keyboard-only login and FR
+render assertions — currently PASS with 0 serious/critical on login/wall/
+My Actions/Executive. Remaining: translate deep views (project room, meetings,
+admin, reports), clear moderate region/heading-order findings.
+
 ## Next executable work items (dependency order)
-8. **E28**: i18n string extraction (EN/FR) then axe automation.
 9. **E23**: server-side export service + PDF + seeded leak tests.
 10. **E15**: WebSocket presenter sync.
 11. **E06**: baselines + change requests.
