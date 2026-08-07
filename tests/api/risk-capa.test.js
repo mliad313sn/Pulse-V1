@@ -139,3 +139,29 @@ test("notification channels: sink adapter captures deliveries; Teams adapter con
   const failFetch = async () => ({ ok: false, status: 500 });
   await assert.rejects(() => teamsAdapter("https://example.local/webhook", failFetch).send({ subject: "x", text: "y" }));
 });
+
+test("minutes versioning: re-close after correction creates v2, v1 preserved intact", async () => {
+  const mt = (await admin.post("/api/v1/meetings")
+    .send({ title: "Versioned meeting", date: daysAhead(2), type: "ADHOC" })).body.meeting;
+  await admin.post(`/api/v1/meetings/${mt.id}/start`);
+  const act = (await admin.post(`/api/v1/meetings/${mt.id}/capture`)
+    .send({ kind: "action", project_id: project.id, title: "Originl typo action", owner_user_id: F.U.admin })).body.created;
+  await admin.post(`/api/v1/meetings/${mt.id}/close`);
+  const v1 = await admin.get(`/api/v1/meetings/${mt.id}/minutes`);
+  assert.equal(v1.body.version, 1);
+  assert.ok(v1.body.minutes.actions.some((a) => a.title === "Originl typo action"));
+  // correct the underlying object, then re-close -> version 2
+  const fixed = await admin.put(`/api/v1/actions/${act.id}`)
+    .send({ title: "Original action (corrected)", updated_at: act.updated_at });
+  assert.equal(fixed.status, 200);
+  await admin.post(`/api/v1/meetings/${mt.id}/close`);
+  const latest = await admin.get(`/api/v1/meetings/${mt.id}/minutes`);
+  assert.equal(latest.body.version, 2);
+  assert.ok(latest.body.minutes.actions.some((a) => a.title === "Original action (corrected)"));
+  // v1 remains readable and UNCHANGED
+  const v1again = await admin.get(`/api/v1/meetings/${mt.id}/minutes?version=1`);
+  assert.equal(v1again.body.version, 1);
+  assert.ok(v1again.body.minutes.actions.some((a) => a.title === "Originl typo action"));
+  const idx = await admin.get(`/api/v1/meetings/${mt.id}/minutes/versions`);
+  assert.deepEqual(idx.body.versions.map((v) => v.version), [1, 2]);
+});

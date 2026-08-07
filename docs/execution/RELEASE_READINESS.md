@@ -8,7 +8,7 @@ enterprise master plan.)
 Updated: 2026-08-07
 
 ## Quality snapshot
-- Tests: 79/79 green (`npm test`) — unit (24) + API/integration (55)
+- Tests: 80/80 green (`npm test`) — unit (24) + API/integration (55)
 - npm audit: 0 vulnerabilities; dependencies pinned
 - Migrations: apply cleanly from empty DB (001→003); deterministic seed passes
 - Backup → verify → restore rehearsal: executed successfully (2026-08-06)
@@ -26,7 +26,7 @@ Updated: 2026-08-07
 1. 7-stage lifecycle + operating status remodel (E05)
 2. Workstreams/tasks/dependencies/critical path (E07) and baselines/change control (E06)
 3. Resources/time (E16), finance with field masking (E17), benefits (E18)
-4. Versioned minutes (E14), realtime presenter sync (E15)
+4. Realtime presenter sync (E15)
 5. Reminder engine + scheduled report dispatch (E21)
 6. Server-side export service with seeded leak tests + PDF (E23)
 7. EN/FR i18n + axe accessibility automation (E28)

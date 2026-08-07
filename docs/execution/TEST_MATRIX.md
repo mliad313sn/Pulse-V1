@@ -12,8 +12,8 @@
 | tests/api/reports.test.js | 5 | §45-46,49 site lens, my-work, snapshots/trend, search scope |
 | tests/api/ratelimit.test.js | 2 | §164 login + API limiters |
 | tests/api/ecosystem.test.js | 6 | gates via API, RACI, site isolation, sync idempotency, halt alert |
-| tests/api/risk-capa.test.js | 5 | §27-29 risks, CAPA lifecycle, reopen, agenda rules 7-8, channel adapters |
-| **Total** | **79** | |
+| tests/api/risk-capa.test.js | 6 | §27-29 risks, CAPA, reopen, agenda rules 7-8, channels, §147 versioned minutes |
+| **Total** | **80** | |
 
 Gaps to add next: minutes versioning, task dependency/cycle tests, export leak tests
 with seeded unauthorized records, reminder idempotency, i18n/a11y smoke.

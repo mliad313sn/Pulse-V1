@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **79/79 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **80/80 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -21,6 +21,9 @@ implementation was kept and extended, not rewritten. Full mapping:
   local sink adapter (default) + real Teams-webhook adapter (contract-tested);
   SMTP contract documented as BLOCKED_EXTERNAL.
 - Freshness now counts risk/CAPA writes as project activity.
+- **E14 slice**: versioned minutes (migration 004) — re-closing a meeting after
+  correcting underlying objects creates version n+1; prior versions immutable and
+  readable (?version=n), version index endpoint.
 
 ## Test commands
 ```
@@ -34,8 +37,7 @@ Dev DB: `postgres://pulse:pulse@localhost:5432/pulse` · test DB `pulse_test` (s
    with data migration from current enum; add `operating_status` column
    (NOT_STARTED/IN_PROGRESS/ON_HOLD/COMPLETED/CANCELLED) and move ON_HOLD out of stage;
    gate request/evidence records. Touches: gates.js, projects service, seed, many tests — do as one atomic slice.
-2. **E14 finish**: versioned minutes (minutes_versions table; re-close creates v+1, prior versions retained).
-3. **E07**: workstreams + tasks + dependencies (cycle rejection) + critical path util (+unit tests) — prerequisite for Gantt UI.
+2. **E07**: workstreams + tasks + dependencies (cycle rejection) + critical path util (+unit tests) — prerequisite for Gantt UI.
 4. **E04 finish**: pillars/portfolios/programs entities + portfolio filter.
 5. **E21**: reminder engine (T-14/T-7/T-2/T0/T+1/T+7) with idempotent cron + dedupe keys.
 6. **E22**: Executive Command Center view; KPI drill-throughs.

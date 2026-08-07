@@ -110,21 +110,28 @@ router.post("/:id/capture", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// Minutes: structured JSON
+// Minutes: structured JSON (latest, or ?version=n for a historical snapshot)
 router.get("/:id/minutes", async (req, res, next) => {
   try {
-    const meeting = await service.loadMeeting(Number(req.params.id));
-    if (!meeting.minutes_json) throw notFound("Minutes not generated yet — close the meeting first");
-    res.json({ minutes: meeting.minutes_json });
+    const v = await service.getMinutesVersion(Number(req.params.id), Number(req.query.version) || null);
+    if (!v) throw notFound("Minutes not generated yet — close the meeting first");
+    res.json({ minutes: v.minutes_json, version: v.version });
+  } catch (err) { next(err); }
+});
+
+// Version index (who closed which version, when)
+router.get("/:id/minutes/versions", async (req, res, next) => {
+  try {
+    res.json({ versions: await service.listMinutesVersions(Number(req.params.id)) });
   } catch (err) { next(err); }
 });
 
 // Minutes: server-rendered HTML, fully escaped (XSS-inert by construction)
 router.get("/:id/minutes.html", async (req, res, next) => {
   try {
-    const meeting = await service.loadMeeting(Number(req.params.id));
-    if (!meeting.minutes_json) throw notFound("Minutes not generated yet — close the meeting first");
-    res.type("html").send(service.renderMinutesHtml(meeting.minutes_json));
+    const v = await service.getMinutesVersion(Number(req.params.id), Number(req.query.version) || null);
+    if (!v) throw notFound("Minutes not generated yet — close the meeting first");
+    res.type("html").send(service.renderMinutesHtml(v.minutes_json));
   } catch (err) { next(err); }
 });
 

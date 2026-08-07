@@ -424,16 +424,52 @@ async function closeMeeting(actor, meetingId) {
   };
 
   return withTransaction(async (client) => {
+    // versioned snapshot: re-closing after correcting underlying objects creates v+1;
+    // prior versions are never modified (plan §147)
+    const v = await client.query(
+      `SELECT coalesce(max(version), 0) + 1 AS next FROM meeting_minutes_versions WHERE meeting_id = $1`,
+      [meetingId]
+    );
+    const version = v.rows[0].next;
+    minutes.version = version;
+    await client.query(
+      `INSERT INTO meeting_minutes_versions (meeting_id, version, minutes_json, closed_by)
+       VALUES ($1,$2,$3,$4)`,
+      [meetingId, version, JSON.stringify(minutes), actor.id]
+    );
     const { rows } = await client.query(
       `UPDATE meetings SET status = 'CLOSED', minutes_json = $2, updated_at = now() WHERE id = $1 RETURNING *`,
       [meetingId, JSON.stringify(minutes)]
     );
     await audit.record(client, {
       entity: "meeting", entityId: meetingId, userId: actor.id,
-      changes: [{ field: "status", old: meeting.status, new: "CLOSED" }],
+      changes: [{ field: "minutes_version", old: String(version - 1) || null, new: String(version) }],
     });
     return rows[0];
   });
+}
+
+async function getMinutesVersion(meetingId, version) {
+  if (version) {
+    const { rows } = await query(
+      `SELECT minutes_json, version FROM meeting_minutes_versions
+        WHERE meeting_id = $1 AND version = $2`,
+      [meetingId, version]
+    );
+    return rows[0] || null;
+  }
+  const meeting = await loadMeeting(meetingId);
+  return meeting.minutes_json ? { minutes_json: meeting.minutes_json, version: meeting.minutes_json.version } : null;
+}
+
+async function listMinutesVersions(meetingId) {
+  const { rows } = await query(
+    `SELECT v.version, v.created_at, u.name AS closed_by_name
+       FROM meeting_minutes_versions v JOIN users u ON u.id = v.closed_by
+      WHERE v.meeting_id = $1 ORDER BY v.version`,
+    [meetingId]
+  );
+  return rows;
 }
 
 // ===== minutes rendering: ALL user text escaped — stored XSS prevention (plan §4.3) =====
@@ -496,4 +532,5 @@ ${rows(minutes.rag_snapshot, (r) => `<tr><td>${esc(r.project)}</td><td>${ragChip
 module.exports = {
   createMeeting, listMeetings, getMeetingDetail, updateItems, setStatus,
   setAttendance, capture, closeMeeting, renderMinutesHtml, buildAgenda, loadMeeting,
+  getMinutesVersion, listMinutesVersions,
 };
