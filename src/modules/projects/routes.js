@@ -33,6 +33,8 @@ const projectBody = z.object({
   portfolio_id: z.number().int().positive().nullable().optional(),
   program_id: z.number().int().positive().nullable().optional(),
   governance: z.enum(["LITE", "STANDARD"]).optional(),
+  template_id: z.number().int().positive().nullable().optional(),
+  custom: z.record(z.string(), z.any()).optional(),
   divisions: z.array(z.object({
     division_id: z.number().int().positive(),
     role_in_project: z.enum(["LEAD", "ENGAGED", "CONSULTED"]),

@@ -75,6 +75,8 @@ const PROJECT_FIELDS = [
 
 async function createProject(actor, input) {
   assertOverrideValid(input.rag_override, input.rag_override_reason);
+  const templates = require("../templates/service");
+  const custom = await templates.validateCustomValues(input.custom, { requireRequired: false });
   return withTransaction(async (client) => {
     await assertValidPM(client, input.project_manager_id);
     await portfolioHierarchy.assertHierarchy(client, input.portfolio_id ?? null, input.program_id ?? null);
@@ -119,6 +121,13 @@ async function createProject(actor, input) {
       );
     }
 
+    if (Object.keys(custom).length) {
+      await client.query(`UPDATE projects SET custom_json = $2 WHERE id = $1`, [project.id, JSON.stringify(custom)]);
+      project.custom_json = custom;
+    }
+    if (input.template_id) {
+      await require("../templates/service").applyTemplate(client, input.template_id, project, actor.id);
+    }
     await audit.recordCreate(client, "project", project.id, actor.id);
     if (project.project_manager_id) {
       await notifications.create(client, {
@@ -157,6 +166,10 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
   if (patch.portfolio_id !== undefined || patch.program_id !== undefined) {
     await portfolioHierarchy.assertHierarchy({ query }, after.portfolio_id ?? null, after.program_id ?? null);
   }
+  if (patch.custom !== undefined) {
+    const validated = await require("../templates/service").validateCustomValues(patch.custom);
+    after.custom_json = { ...(project.custom_json || {}), ...validated };
+  }
 
   // Operating-status control (plan §131-132): hold/cancel need reasons; cancelled is terminal
   if (patch.operating_status !== undefined && patch.operating_status !== project.operating_status) {
@@ -187,7 +200,7 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
          budget_note=$13, roadmap_pillar=$14, confidential=$15, rag_override=$16,
          rag_override_reason=$17, exec_commentary=$18, operating_status=$19,
          hold_reason=$20, cancel_reason=$21, portfolio_id=$22, program_id=$23,
-         governance=$24, updated_at=now()
+         governance=$24, custom_json=$25, updated_at=now()
        WHERE id=$1 AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', $2::timestamptz) AND deleted_at IS NULL
        RETURNING *`,
       [
@@ -198,6 +211,7 @@ async function updateProject(actor, projectAccess, patch, expectedUpdatedAt) {
         after.rag_override, after.rag_override_reason, after.exec_commentary,
         after.operating_status, after.hold_reason, after.cancel_reason,
         after.portfolio_id, after.program_id, after.governance,
+        JSON.stringify(after.custom_json || {}),
       ]
     );
     if (res.rows.length === 0) {

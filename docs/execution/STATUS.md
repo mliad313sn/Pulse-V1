@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **144/144 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **146/146 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -83,10 +83,12 @@ Deps: exceljs+pdfkit+pptxgenjs added (uuid overridden to ^11 — audit stays 0).
 A second /goal directive extends the completed master plan into a Strategic
 Portfolio Management platform. Phases (dependency order; each = tested slices):
 - **P0 Trust & Correctness — DONE this round** (see below)
-- **P1 Strategy & Demand — PARTIAL**: demand lifecycle + scoring + conversion
-  + Demand UI DONE; objectives/OKRs (computed KR progress incl. decreasing
-  targets, project linkage, strategy board on Portfolios view) DONE.
-  REMAINING: project templates/blueprints; custom fields; configurable views.
+- **P1 Strategy & Demand — DONE**: demand lifecycle + scoring + conversion +
+  Demand UI; objectives/OKRs with computed progress + strategy board;
+  project templates/blueprints (dated milestone stamping incl. readiness
+  checklists, workstreams, deliverables, migration 018); Admin-defined typed
+  custom fields validated server-side, stored in projects.custom_json.
+  (Configurable saved views deferred to P11 UX.)
 - **P2 Advanced planning**: WBS/summary tasks; effort/remaining; calendars +
   exceptions; constraints; task baselines + variance; cross-project deps;
   blast-radius; schedule quality checks; resource leveling. (FS/SS/FF/SF +
