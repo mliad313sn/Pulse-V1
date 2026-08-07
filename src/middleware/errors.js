@@ -26,8 +26,21 @@ function errorHandler(err, req, res, next) {
   if (err instanceof ApiError) {
     return res.status(err.status).json({ error: err.message, ...(err.extra || {}) });
   }
-  console.error("Unhandled error:", err);
-  return res.status(500).json({ error: "Internal server error" });
+  // SPM P12 — an unexpected failure is logged as one structured line carrying
+  // the request id, and the client is given that same id. The user can quote
+  // it in a ticket; the log never returns the stack to the browser.
+  const requestId = req.id || null;
+  try {
+    require("./observability").log("error", {
+      msg: "unhandled_error", request_id: requestId,
+      method: req.method, path: req.originalUrl?.split("?")[0],
+      user_id: req.session?.userId || null,
+      error: err.message, stack: err.stack,
+    });
+  } catch {
+    console.error("Unhandled error:", err);
+  }
+  return res.status(500).json({ error: "Internal server error", request_id: requestId });
 }
 
 module.exports = { ApiError, badRequest, unauthorized, forbidden, notFound, conflict, errorHandler };

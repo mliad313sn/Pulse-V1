@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **201/201 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **204/204 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -192,8 +192,22 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
   --check` parses as CommonJS and had accepted a mis-nested template literal
   the browser refused. REMAINING: decision-graph visualization, timeline/
   calendar views, saved configurable views.
-- **P12 Scale/ops**: Redis coordination; outbox/DLQ; OpenTelemetry; PITR;
-  SLOs; performance tests.
+- **P12 Scale/ops — MOSTLY DONE**: structured JSON request logging with
+  correlation ids (an upstream X-Request-Id survives; slow requests logged as
+  warnings; bodies NEVER logged since they carry confidential titles and
+  money); unhandled errors log one correlated line and return the id to the
+  user without the stack; Admin-only /metrics in Prometheus format reporting
+  only what is genuinely measured (requests, 5xx, duration histogram, webhook
+  queue depth + dead letters, DB pool saturation); performance test asserting
+  the wall stays fast at 120 projects (catches an N+1 regression); durable
+  outbox/DLQ shipped in P10. docs/RUNBOOK_OPERATIONS.md written from an
+  ACTUALLY EXECUTED backup + restore drill (restored into a fresh database,
+  verified 26 migrations and reference data, booted the app against it and
+  got readyz 200). Honest limits documented rather than hidden: rate limiting
+  is per-instance and the realtime room needs sticky sessions until a shared
+  backend exists; PITR is a server capability, configured where PostgreSQL is
+  hosted. REMAINING: Redis-backed shared rate limit + realtime pub/sub,
+  OpenTelemetry traces.
 
 ## Completed: SPM P1 slice 1 — demand management (2026-08-07)
 Migration 016: demands (problem/outcome hypothesis, business case, scoring

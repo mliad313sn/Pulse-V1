@@ -30,6 +30,10 @@ function createApp(options = {}) {
   );
   app.use(express.json({ limit: "1mb" }));
 
+  // SPM P12 — structured request logging with a correlation id
+  const observability = require("./middleware/observability");
+  app.use(observability.requestLogger);
+
   // Sessions in PostgreSQL — survive app restarts (plan §1)
   app.use(
     session({
@@ -106,6 +110,25 @@ function createApp(options = {}) {
                 WHERE deleted_at IS NULL AND active = true ORDER BY name`),
       ]);
       res.json({ divisions: divisions.rows, sites: sites.rows, users: users.rows });
+    } catch (err) { next(err); }
+  });
+
+  // SPM P12 — operational metrics (Prometheus text format). Admin-only: the
+  // numbers reveal traffic shape and queue depth.
+  app.get("/metrics", requireAuth, async (req, res, next) => {
+    try {
+      if (req.user.role !== "ADMIN") return res.status(403).json({ error: "Admin only" });
+      const [outbox, dead] = await Promise.all([
+        query(`SELECT count(*)::int AS n FROM webhook_deliveries WHERE status IN ('PENDING','FAILED')`),
+        query(`SELECT count(*)::int AS n FROM webhook_deliveries WHERE status = 'DEAD'`),
+      ]);
+      res.type("text/plain").send(observability.renderMetrics({
+        pulse_webhook_queue_depth: outbox.rows[0].n,
+        pulse_webhook_dead_letters: dead.rows[0].n,
+        pulse_db_pool_total: pool.totalCount,
+        pulse_db_pool_idle: pool.idleCount,
+        pulse_db_pool_waiting: pool.waitingCount,
+      }));
     } catch (err) { next(err); }
   });
 
