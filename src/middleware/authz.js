@@ -10,7 +10,7 @@ async function loadSessionUser(req) {
   if (!req.session || !req.session.userId) return null;
   const { rows } = await query(
     `SELECT id, name, email, role, division_id, site_id, active, must_change_password,
-            is_steering_committee, enterprise_access
+            is_steering_committee, enterprise_access, finance_access
        FROM users WHERE id = $1 AND deleted_at IS NULL AND active = true`,
     [req.session.userId]
   );

@@ -22,8 +22,8 @@ Evidence = test file(s) unless noted. Updated: 2026-08-07.
 | E14 Meetings | §35,36,39 | COMPLETE (core) | 9 agenda rules, site scope, live capture, escaped minutes, VERSIONED minutes (re-close = v+1, history immutable) | meetings.test (6), risk-capa.test (6). Gap: meeting types list |
 | E15 Realtime meeting sync | §38,124 | NOT_STARTED | single-driver presenter mode only | — |
 | E16 Resources/time | §40,41 | PARTIAL | allocations (percent, dates, role), workload view with per-project overload explanation ('125% across 2 projects: …'), agenda rule 9 (resource conflicts), self-only time entries with 0-24h bounds, planned-vs-actual summary | resources.test (2). Gap: skills tags, site/division capacity rollups, approval workflow |
-| E17 Finance | §42,145 | NOT_STARTED | — | — |
-| E18 Benefits | §43 | NOT_STARTED | — | — |
+| E17 Finance | §42,145 | PARTIAL | budget lines (9 categories, CAPEX/OPEX, decimal money), variance summary with plan-§117 explanation, server-side field masking via users.finance_access (even a PM is 403 without it), grant/revoke audited + immediate | finance.test (2). Gap: baselines/snapshots, per-project finance-controller role, export inclusion for authorized users |
+| E18 Benefits | §43 | PARTIAL | benefits register (baseline/target/unit/method/actual, 5 statuses), FULL defines, owner progresses | finance.test §3. Gap: measurement history rows, RUN-phase reminders |
 | E19 Notifications | §52 | PARTIAL | 7 in-app types incl. SYNC_HALTED, bell, deep links | meetings.test. Gap: dedupe keys, reminder schedule (T-14…T+7), preferences |
 | E20 Email/Teams | §53 | PARTIAL/BLOCKED_EXTERNAL | channel dispatcher + delivery ledger + local sink + real Teams webhook adapter (tested via injected fetch); SMTP contract documented | risk-capa.test §5. Needs: TEAMS_WEBHOOK_URL, SMTP relay (see EXTERNAL_DEPENDENCIES.md) |
 | E21 Scheduling/workers | §54,55,81 | PARTIAL | cron: weekly snapshot, daily verified backup, daily reminder/escalation engine (T-14/T-7/T-2/T0/T+1/T+7, reminder_log idempotency, T+7 PM escalation, hold/cancel exclusion) | reminders.test (2), reports.test. Gap: scheduled report dispatch, durable queue |

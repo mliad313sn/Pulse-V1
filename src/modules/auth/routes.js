@@ -111,6 +111,7 @@ router.put("/users/:id", requireAuth, requireRole("ADMIN"), async (req, res, nex
       active: req.body.active,
       is_steering_committee: typeof req.body.isSteeringCommittee === "boolean" ? req.body.isSteeringCommittee : undefined,
       enterprise_access: typeof req.body.enterpriseAccess === "boolean" ? req.body.enterpriseAccess : undefined,
+      finance_access: typeof req.body.financeAccess === "boolean" ? req.body.financeAccess : undefined,
     });
     res.json({ user });
   } catch (err) { next(err); }
