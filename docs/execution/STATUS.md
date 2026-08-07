@@ -1,6 +1,6 @@
 # Execution Status
 
-Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **151/151 green** · `npm audit`: 0 vulnerabilities
+Updated: 2026-08-07 · Branch: `claude/pulse-platform-build-0n6w1u` · Tests: **154/154 green** · `npm audit`: 0 vulnerabilities
 
 ## Where the build stands
 
@@ -108,9 +108,14 @@ Portfolio Management platform. Phases (dependency order; each = tested slices):
 - **P5 Health 2.0**: weighted multi-dimensional signals (schedule/finance/
   resources/risks/governance/benefits/confidence) with record-level links;
   progress methodologies (effort/cost/EVM).
-- **P6 Scenarios & optimization**: scenario objects; compare; knapsack-style
-  portfolio optimization under budget/resource/mandatory constraints;
-  promote scenario → change request.
+- **P6 Scenarios & optimization — DONE (core)**: scenario objects (DEFER/
+  STOP/BUDGET_DELTA moves, migration 021) with pure zero-mutation evaluation
+  (schedule shifts, freed budget; money masked without finance flag);
+  0/1-knapsack portfolio optimization ($1k DP, mandatory funded first, every
+  in/out decision explained) over the demand backlog; Steering-gated
+  decisions; PROMOTED scenarios spawn PENDING change requests per move —
+  humans still approve each one. REMAINING: resource-constraint dimension in
+  the optimizer; scenario UI (P8/P11).
 - **P7 Decision graph**: strategy→…→outcome traceability; why/what-changed/
   who-approved/blast-radius queries.
 - **P8 Meeting Mode 2.0**: live scenario simulation in Steering meetings;
