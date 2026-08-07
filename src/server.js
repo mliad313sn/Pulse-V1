@@ -28,6 +28,11 @@ function createApp(options = {}) {
       },
     })
   );
+  // Compression: JSON payloads here are large by nature (a capacity ledger is
+  // a person × month grid, the OpenAPI document is ~89 KB) and the frontend
+  // ships ~200 KB of unbundled modules. Nothing was compressed before this.
+  app.use(require("compression")({ threshold: 1024 }));
+
   app.use(express.json({ limit: "1mb" }));
 
   // SPM P12 — structured request logging with a correlation id
